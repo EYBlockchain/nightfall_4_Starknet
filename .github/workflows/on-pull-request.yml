@@ -15,31 +15,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Correct, CI-safe Foundry install
       - name: Install Foundry (forge, cast) - needed by build.rs
-        shell: bash
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Verify forge
         run: |
-          set -euo pipefail
-          curl -L https://foundry.paradigm.xyz | bash
-
-          # Ensure both candidate locations are on PATH for this step and later steps
-          echo "$HOME/.foundry/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin"   >> $GITHUB_PATH
-          export PATH="$HOME/.foundry/bin:$HOME/.cargo/bin:$PATH"
-
-          # Run foundryup no matter where the installer placed it
-          if command -v foundryup >/dev/null 2>&1; then
-            foundryup
-          elif [ -x "$HOME/.foundry/bin/foundryup" ]; then
-            "$HOME/.foundry/bin/foundryup"
-          elif [ -x "$HOME/.cargo/bin/foundryup" ]; then
-            "$HOME/.cargo/bin/foundryup"
-          else
-            echo "foundryup not found. Contents of ~/.foundry/bin and ~/.cargo/bin:"
-            ls -la "$HOME/.foundry/bin" || true
-            ls -la "$HOME/.cargo/bin" || true
-            exit 1
-          fi
-
+          which forge
           forge --version
 
       - name: Install Rust nightly with rustfmt & clippy
@@ -47,7 +31,6 @@ jobs:
         run: |
           rustup toolchain install nightly
           rustup +nightly component add rustfmt clippy
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Setup Node.js (for upgrades-core validator)
         uses: actions/setup-node@v4
@@ -58,9 +41,9 @@ jobs:
         shell: bash
         run: |
           npm i -g @openzeppelin/upgrades-core@^1.37.0
-          which node && node -v
-          which npm && npm -v
-          which npx && npx --version
+          node -v
+          npm -v
+          npx --version
 
       - name: Run cargo fmt
         run: cargo +nightly fmt
@@ -84,30 +67,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Same action here (jobs do not share state)
       - name: Install Foundry (forge, cast)
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -L https://foundry.paradigm.xyz | bash
-
-          echo "$HOME/.foundry/bin" >> $GITHUB_PATH
-          echo "$HOME/.cargo/bin"   >> $GITHUB_PATH
-          export PATH="$HOME/.foundry/bin:$HOME/.cargo/bin:$PATH"
-
-          if command -v foundryup >/dev/null 2>&1; then
-            foundryup
-          elif [ -x "$HOME/.foundry/bin/foundryup" ]; then
-            "$HOME/.foundry/bin/foundryup"
-          elif [ -x "$HOME/.cargo/bin/foundryup" ]; then
-            "$HOME/.cargo/bin/foundryup"
-          else
-            echo "foundryup not found. Contents of ~/.foundry/bin and ~/.cargo/bin:"
-            ls -la "$HOME/.foundry/bin" || true
-            ls -la "$HOME/.cargo/bin" || true
-            exit 1
-          fi
-
-          forge --version
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
 
       - name: Run Forge Tests
         run: forge test
