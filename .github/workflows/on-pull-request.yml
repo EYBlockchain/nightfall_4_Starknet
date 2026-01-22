@@ -11,18 +11,23 @@ jobs:
   build:
     name: Check + Lint
     runs-on: ubuntu-latest
-    # environment: DEV
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Foundry (forge, cast) - needed by build.rs
+        shell: bash
+        run: |
+          curl -L https://foundry.paradigm.xyz | bash
+          "$HOME/.foundry/bin/foundryup"
+          echo "$HOME/.foundry/bin" >> $GITHUB_PATH
 
       - name: Install Rust nightly with rustfmt & clippy
         shell: bash
         run: |
           rustup toolchain install nightly
           rustup +nightly component add rustfmt clippy
-          # make sure cargo bin is on PATH for following steps in this job
-          echo "PATH=$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Setup Node.js (for upgrades-core validator)
         uses: actions/setup-node@v4
@@ -37,8 +42,11 @@ jobs:
           which npm && npm -v
           which npx && npx --version
 
-      - name: Export PATH for child processes
-        run: echo "PATH=$PATH" >> $GITHUB_ENV
+      - name: Verify forge is available
+        shell: bash
+        run: |
+          which forge
+          forge --version
 
       - name: Run cargo fmt
         run: cargo +nightly fmt
@@ -54,8 +62,6 @@ jobs:
       - name: Run test
         run: cargo test
 
-  # (integration jobs omitted for brevity)
-
   forge:
     name: Smart Contract Unit Tests
     needs: [build]
@@ -68,10 +74,8 @@ jobs:
         shell: bash
         run: |
           curl -L https://foundry.paradigm.xyz | bash
-          # ensure new PATH takes effect in this runner session for subsequent steps
-          source ~/.bashrc || true
-          foundryup
-          echo "PATH=$HOME/.foundry/bin:$HOME/.cargo/bin:$PATH" >> $GITHUB_ENV
+          "$HOME/.foundry/bin/foundryup"
+          echo "$HOME/.foundry/bin" >> $GITHUB_PATH
 
       - name: Run Forge Tests
         run: forge test
