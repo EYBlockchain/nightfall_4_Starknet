@@ -15,6 +15,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install Rust nightly with rustfmt
+        run: |
+          rustup toolchain install nightly --component rustfmt
+          rustup +nightly component add rustfmt clippy
         # Add Node so npx exists for OZ upgrades validation
       - name: Setup Node.js (for upgrades-core validator)
         uses: actions/setup-node@v4
@@ -183,6 +187,11 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
+      - name: Install Foundry
+          run: |
+            curl -L https://foundry.paradigm.xyz | bash
+            source ~/.bashrc || true
+            foundryup
       - name: Checkout
         uses: actions/checkout@v4
       - name: Run Forge Tests
