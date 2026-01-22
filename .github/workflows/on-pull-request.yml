@@ -21,6 +21,7 @@ jobs:
           curl -L https://foundry.paradigm.xyz | bash
           "$HOME/.cargo/bin/foundryup"
           echo "$HOME/.foundry/bin" >> $GITHUB_PATH
+          source /home/runner/.bashrc
       - name: Verify forge
         shell: bash
         run: |
