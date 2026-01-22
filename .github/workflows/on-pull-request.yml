@@ -6,7 +6,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
   NF4_LARGE_BLOCK_TEST: "true"
-  
+
 jobs:
   build:
     name: Check + Lint
@@ -18,15 +18,29 @@ jobs:
       - name: Install Foundry (forge, cast) - needed by build.rs
         shell: bash
         run: |
+          set -euo pipefail
           curl -L https://foundry.paradigm.xyz | bash
-          "$HOME/.cargo/bin/foundryup"
+
+          # Ensure both candidate locations are on PATH for this step and later steps
           echo "$HOME/.foundry/bin" >> $GITHUB_PATH
-          source /home/runner/.bashrc
-      - name: Verify forge
-        shell: bash
-        run: |
-            which forge
-            forge --version
+          echo "$HOME/.cargo/bin"   >> $GITHUB_PATH
+          export PATH="$HOME/.foundry/bin:$HOME/.cargo/bin:$PATH"
+
+          # Run foundryup no matter where the installer placed it
+          if command -v foundryup >/dev/null 2>&1; then
+            foundryup
+          elif [ -x "$HOME/.foundry/bin/foundryup" ]; then
+            "$HOME/.foundry/bin/foundryup"
+          elif [ -x "$HOME/.cargo/bin/foundryup" ]; then
+            "$HOME/.cargo/bin/foundryup"
+          else
+            echo "foundryup not found. Contents of ~/.foundry/bin and ~/.cargo/bin:"
+            ls -la "$HOME/.foundry/bin" || true
+            ls -la "$HOME/.cargo/bin" || true
+            exit 1
+          fi
+
+          forge --version
 
       - name: Install Rust nightly with rustfmt & clippy
         shell: bash
@@ -47,12 +61,6 @@ jobs:
           which node && node -v
           which npm && npm -v
           which npx && npx --version
-
-      - name: Verify forge is available
-        shell: bash
-        run: |
-          which forge
-          forge --version
 
       - name: Run cargo fmt
         run: cargo +nightly fmt
@@ -79,9 +87,27 @@ jobs:
       - name: Install Foundry (forge, cast)
         shell: bash
         run: |
+          set -euo pipefail
           curl -L https://foundry.paradigm.xyz | bash
-          "$HOME/.foundry/bin/foundryup"
+
           echo "$HOME/.foundry/bin" >> $GITHUB_PATH
+          echo "$HOME/.cargo/bin"   >> $GITHUB_PATH
+          export PATH="$HOME/.foundry/bin:$HOME/.cargo/bin:$PATH"
+
+          if command -v foundryup >/dev/null 2>&1; then
+            foundryup
+          elif [ -x "$HOME/.foundry/bin/foundryup" ]; then
+            "$HOME/.foundry/bin/foundryup"
+          elif [ -x "$HOME/.cargo/bin/foundryup" ]; then
+            "$HOME/.cargo/bin/foundryup"
+          else
+            echo "foundryup not found. Contents of ~/.foundry/bin and ~/.cargo/bin:"
+            ls -la "$HOME/.foundry/bin" || true
+            ls -la "$HOME/.cargo/bin" || true
+            exit 1
+          fi
+
+          forge --version
 
       - name: Run Forge Tests
         run: forge test
