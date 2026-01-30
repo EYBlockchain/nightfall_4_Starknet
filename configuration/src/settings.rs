@@ -83,6 +83,20 @@ pub struct EthereumClientConfig {
     pub url: String,
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum BackendKind {
+    Starknet,
+    #[serde(alias = "ethereum")]
+    Evm,
+}
+
+impl Default for BackendKind {
+    fn default() -> Self {
+        Self::Starknet
+    }
+}
+
 #[derive(Debug, Deserialize, Default, Serialize, PartialEq)]
 pub struct ContractAddresses {
     pub nightfall: String,
@@ -120,6 +134,8 @@ pub struct Settings {
     pub azure_vault_url: String,
     #[serde(default)]
     pub azure_key_name: String,
+    #[serde(default)]
+    pub backend_kind: BackendKind,
     pub log_app_only: bool,
     pub test_x509_certificates: bool,
     pub mock_prover: bool,
@@ -130,6 +146,8 @@ pub struct Settings {
     pub nightfall_proposer: ProposerConfig,
     pub network: Network,
     pub ethereum_client_url: String,
+    #[serde(default)]
+    pub starknet_client_url: String,
     pub nightfall_test: TestConfig,
     pub genesis_block: usize,
     pub certificates: CertificateConfig,

@@ -2,11 +2,17 @@
 # The development section of this file is used by the integration tests. Take care editing it or you may break the tests
 # Select a configuration by setting the environment variable NF4_RUN_MODE to the desired section name, e.g. NF4_RUN_MODE="production"
 #
+#
+# Starknet example (recommended path):
+#   export NF4_RUN_MODE=starknet_devnet
+#   export NF4_STARKNET_CLIENT_URL=http://starknet-devnet:5050/rpc
+#
 
 [development]
 signing_key = "Key not set" #key (0)
 azure_vault_url = "vault url is not set"
 azure_key_name = "key name not set"
+backend_kind = "evm"
 log_app_only = true
 test_x509_certificates = true
 mock_prover = true
@@ -134,6 +140,50 @@ certificate_policies = [
 ]
 oid_group = 0
 
+[starknet_devnet]
+# NOTE: This profile is intentionally minimal.
+# Starknet mode is being introduced incrementally; EVM-specific deployment and Solidity artifact
+# configuration is not used here and will be wired up once the chain-neutral adapter layer is in place.
+backend_kind = "starknet"
+starknet_client_url = "http://starknet-devnet:5050/rpc"
+
+[starknet_devnet.network]
+# Placeholder until Starknet chain_id is wired throughout the codebase.
+chain_id = 0
+
+[starknet_devnet.nightfall_client]
+url = "http://client:3000"
+log_level = "info"
+wallet_type = "local"
+db_url = "mongodb://nf4_db_client:27017"
+max_event_listener_attempts = 10
+webhook_url = "http://172.18.0.250:8080/webhook"
+max_queue_size = 1000
+
+[starknet_devnet.nightfall_proposer]
+url = "http://proposer:3000"
+log_level = "info"
+wallet_type = "local"
+db_url = "mongodb://nf4_db_proposer:27017"
+block_assembly_max_wait_secs = 120
+block_assembly_target_fill_ratio = 0.25
+block_assembly_initial_interval_secs = 15
+max_event_listener_attempts = 10
+block_size = 64
+
+[starknet_devnet.nightfall_deployer]
+log_level = "info"
+default_proposer_address = ""
+default_proposer_url = "http://proposer:3000"
+proposer_stake = 4
+proposer_ding = 3
+proposer_exit_penalty = 2
+proposer_cooling_blocks = 4
+proposer_rotation_blocks = 4
+
+[starknet_devnet.nightfall_test]
+log_level = "info"
+
 [base_sepolia]
 # This is the base_sepolia environment - add an appropriate configuration here, using development as a template
 signing_key = "Key not set" #key (0)
@@ -141,6 +191,7 @@ log_app_only = true
 test_x509_certificates = true
 mock_prover = false
 genesis_block = 7303940
+backend_kind = "evm"
 ethereum_client_url = "override this with an environment variable NF4_ETHEREUM_CLIENT_URL"
 configuration_url = "http://configuration:80" # The name of the proposer config to use can be overridden by env var NF4_PROPOSER_CONFIG
 
