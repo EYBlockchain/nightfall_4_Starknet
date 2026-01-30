@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 tokio-util = "0.7.16"
 anyhow = "1.0.100"
+thiserror = "2.0.17"
 itertools = "0.14.0"
 hex-literal = "1.1.0"
 eyre = "0.6.12"
