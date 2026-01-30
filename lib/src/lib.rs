@@ -1,5 +1,6 @@
 pub mod blockchain_client;
 pub mod circuit_key_generation;
+pub mod chain_client;
 pub mod constants;
 pub mod contract_conversions;
 pub mod deposit_circuit;
