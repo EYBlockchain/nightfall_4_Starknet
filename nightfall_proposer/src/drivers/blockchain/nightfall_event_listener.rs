@@ -29,6 +29,7 @@ use tokio::{
     sync::{OnceCell, RwLock},
     time::sleep,
 };
+use lib::evm_event_decoder;
 
 /// This function starts the event handler. It will attempt to restart the event handler in case of errors
 /// with an exponential backoff for a configurable number of attempts. If the event handler
@@ -132,11 +133,16 @@ where
                 .expect("could not get past events");
             log::info!("Found {} past events to process", past_events.len());
             for evt in past_events {
+                if let Err(e) = evm_event_decoder::evm::decode_nightfall_log(&evt) {
+                    warn!("Failed to decode log: {e:?}");
+                    continue;
+                }
+
                 let event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
                     Ok(e) => e,
                     Err(e) => {
-                        warn!("Failed to decode log: {e:?}");
-                        continue; // Skip malformed events
+                        warn!("Failed to decode log (legacy): {e:?}");
+                        continue;
                     }
                 };
                 let result = process_events::<P, E, N>(event.data, evt).await;
@@ -172,11 +178,16 @@ where
     let mut events_stream = events_subscription.into_stream();
 
     while let Some(log) = events_stream.next().await {
+        if let Err(e) = evm_event_decoder::evm::decode_nightfall_log(&log) {
+            warn!("Failed to decode log: {e:?}");
+            continue;
+        }
+
         let event = match Nightfall::NightfallEvents::decode_log(&log.inner) {
             Ok(e) => e,
             Err(e) => {
-                warn!("Failed to decode log: {e:?}");
-                continue; // Skip malformed events
+                warn!("Failed to decode log (legacy): {e:?}");
+                continue;
             }
         };
         let result = process_events::<P, E, N>(event.data, log).await;

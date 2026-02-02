@@ -1,14 +1,22 @@
 pub mod types;
 
+pub mod signer;
+
+#[cfg(feature = "backend_evm")]
+pub mod evm;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+
+use crate::blockchain_client::BlockchainClientConnection;
 
 use types::{BlockNumber, ChainId, ContractId, EventFilter, RawEvent, TxHash};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum ChainClientError {
-	#[error("not supported by backend")]
-	NotSupported,
+	#[error("not supported: {0}")]
+	NotSupported(String),
 	#[error("rpc error: {0}")]
 	Rpc(String),
 	#[error("invalid calldata")]
@@ -24,6 +32,65 @@ pub struct SignedTransaction {
 pub struct TxReceipt {
 	pub tx_hash: TxHash,
 	pub success: bool,
+}
+
+/// Initialize a chain-neutral client selected by configuration.
+///
+/// This is the single entrypoint intended by US-006.
+pub async fn get_chain_client(
+	settings: &configuration::settings::Settings,
+) -> Result<Arc<dyn ChainClient>, ChainClientError> {
+	match settings.backend_kind {
+		configuration::settings::BackendKind::Evm => {
+			#[cfg(feature = "backend_evm")]
+			{
+				use crate::wallets::LocalWsClient;
+				let ws = LocalWsClient::try_from_settings(settings)
+					.await
+					.map_err(|e| ChainClientError::Rpc(e.to_string()))?;
+				let provider = ws.get_client();
+				Ok(Arc::new(evm::EvmChainClient::new(provider)))
+			}
+			#[cfg(not(feature = "backend_evm"))]
+			{
+				Err(ChainClientError::NotSupported(
+					"EVM backend selected but `backend_evm` feature is disabled".to_string(),
+				))
+			}
+		}
+		configuration::settings::BackendKind::Starknet => Err(ChainClientError::NotSupported(
+			"Starknet backend not implemented yet".to_string(),
+		)),
+	}
+}
+
+/// Initialize a chain-neutral signer selected by configuration.
+///
+/// For now this is only implemented for the EVM backend.
+pub async fn get_chain_signer(
+	settings: &configuration::settings::Settings,
+) -> Result<Arc<dyn signer::ChainSigner>, ChainClientError> {
+	match settings.backend_kind {
+		configuration::settings::BackendKind::Evm => {
+			#[cfg(feature = "backend_evm")]
+			{
+				use crate::wallets::LocalWsClient;
+				let ws = LocalWsClient::try_from_settings(settings)
+					.await
+					.map_err(|e| ChainClientError::Rpc(e.to_string()))?;
+				Ok(Arc::new(signer::evm::EvmChainSigner::new(ws.get_wallet_type().clone())))
+			}
+			#[cfg(not(feature = "backend_evm"))]
+			{
+				Err(ChainClientError::NotSupported(
+					"EVM backend selected but `backend_evm` feature is disabled".to_string(),
+				))
+			}
+		}
+		configuration::settings::BackendKind::Starknet => Err(ChainClientError::NotSupported(
+			"Starknet backend not implemented yet".to_string(),
+		)),
+	}
 }
 
 #[async_trait]

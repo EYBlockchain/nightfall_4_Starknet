@@ -27,6 +27,7 @@ use log::{debug, info, warn};
 use nightfall_bindings::artifacts::Nightfall;
 use std::{panic, time::Duration};
 use tokio::time::sleep;
+use lib::evm_event_decoder;
 /// This function starts the event handler. It will attempt to restart the event handler in case of errors
 /// with an exponential backoff  for a configurable number of attempts. If the event handler
 /// fails after the maximum number of attempts, it will log an error and send a notification (if configured).
@@ -121,13 +122,18 @@ pub async fn listen_for_events<N: NightfallContract>(
                 .expect("could not get past events");
             log::info!("Found {} past events to process", past_events.len());
             for evt in past_events {
+                if let Err(e) = evm_event_decoder::evm::decode_nightfall_log(&evt) {
+                    warn!("Failed to decode log: {e:?}");
+                    continue;
+                }
                 let event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
                     Ok(e) => e,
                     Err(e) => {
-                        warn!("Failed to decode log: {e:?}");
-                        continue; // Skip malformed events
+                        warn!("Failed to decode log (legacy): {e:?}");
+                        continue;
                     }
                 };
+
                 let result = process_events::<N>(event.data, evt).await;
                 match result {
                     Ok(_) => continue,
@@ -155,11 +161,15 @@ pub async fn listen_for_events<N: NightfallContract>(
 
     while let Some(evt) = events_stream.next().await {
         // process each event in the stream and handle any errors
+        if let Err(e) = evm_event_decoder::evm::decode_nightfall_log(&evt) {
+            warn!("Failed to decode log: {e:?}");
+            continue;
+        }
         let event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
             Ok(e) => e,
             Err(e) => {
-                warn!("Failed to decode log: {e:?}");
-                continue; // Skip malformed events
+                warn!("Failed to decode log (legacy): {e:?}");
+                continue;
             }
         };
         let result = process_events::<N>(event.data, evt).await;
