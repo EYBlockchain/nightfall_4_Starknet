@@ -73,7 +73,7 @@ impl ChainClient for EvmChainClient {
             .get_chain_id()
             .await
             .map_err(|e| ChainClientError::Rpc(e.to_string()))?;
-        Ok(ChainId(id))
+        Ok(ChainId::from_evm_u64(id))
     }
 
     async fn block_number(&self) -> Result<BlockNumber, ChainClientError> {

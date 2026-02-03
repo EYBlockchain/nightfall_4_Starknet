@@ -61,9 +61,24 @@ pub async fn get_chain_client(
 				))
 			}
 		}
-		configuration::settings::BackendKind::Starknet => Err(ChainClientError::NotSupported(
-			"Starknet backend not implemented yet".to_string(),
-		)),
+		configuration::settings::BackendKind::Starknet => {
+			#[cfg(feature = "backend_starknet")]
+			{
+				let url = settings.starknet_client_url.clone();
+				if url.trim().is_empty() {
+					return Err(ChainClientError::Rpc(
+						"missing starknet_client_url".to_string(),
+					));
+				}
+				Ok(Arc::new(starknet::StarknetChainClient::new(url)))
+			}
+			#[cfg(not(feature = "backend_starknet"))]
+			{
+				Err(ChainClientError::NotSupported(
+					"Starknet backend selected but `backend_starknet` feature is disabled".to_string(),
+				))
+			}
+		}
 	}
 }
 
