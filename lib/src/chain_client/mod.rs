@@ -5,6 +5,9 @@ pub mod signer;
 #[cfg(feature = "backend_evm")]
 pub mod evm;
 
+#[cfg(feature = "backend_starknet")]
+pub mod starknet;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

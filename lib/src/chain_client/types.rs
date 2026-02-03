@@ -60,8 +60,6 @@ mod evm_conversions {
 
 #[cfg(feature = "backend_starknet")]
 mod starknet_conversions {
-    use super::*;
-
     // Intentionally left minimal: Starknet types/deps will be added under the
     // `backend_starknet` feature in later stories.
 }

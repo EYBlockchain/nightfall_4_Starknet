@@ -103,7 +103,7 @@ impl ChainClient for EvmChainClient {
             // alloy::rpc::types::Log
             let block_number = log
                 .block_number
-                .map(|b| BlockNumber(b))
+                .map(BlockNumber)
                 .unwrap_or(from_block);
 
             let tx_hash = log

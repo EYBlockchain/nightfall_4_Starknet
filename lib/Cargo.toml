@@ -21,7 +21,9 @@ dotenv = "0.15.0"
 x509-parser = "0.16.0"
 openssl = "0.10.72"
 k256 = { version = "0.13", features = ["ecdsa", "sha256"] }
-alloy = { version = "1.0.23", features = ["full", "json-rpc"], optional = true }
+alloy = { version = "1.0.23", features = ["full", "json-rpc"] }
+starknet = { version = "0.12", optional = true }
+starknet-crypto = { version = "0.7", optional = true }
 tokio = { version = "1.45.0", features = ["full"] }
 configuration = { path = "../configuration" }
 nightfall_bindings = {path = "../nightfall_bindings"}
@@ -61,8 +63,8 @@ base64 = "0.22.1"
 [features]
 # Keep existing behavior by default: EVM backend is enabled.
 default = ["backend_evm"]
-backend_evm = ["dep:alloy"]
-backend_starknet = []
+backend_evm = []
+backend_starknet = ["dep:starknet", "dep:starknet-crypto"]
 [build-dependencies]
 configuration = { path = "../configuration" }
 tokio = { version = "1.45.0", features = ["full"] }
