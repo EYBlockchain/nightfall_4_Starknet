@@ -5,7 +5,7 @@
 #
 # Starknet example (recommended path):
 #   export NF4_RUN_MODE=starknet_devnet
-#   export NF4_STARKNET_CLIENT_URL=http://starknet-devnet:5050/rpc
+#   export NF4_STARKNET_CLIENT_URL=http://starknet-devnet:5050
 #
 
 [development]
@@ -145,7 +145,7 @@ oid_group = 0
 # Starknet mode is being introduced incrementally; EVM-specific deployment and Solidity artifact
 # configuration is not used here and will be wired up once the chain-neutral adapter layer is in place.
 backend_kind = "starknet"
-starknet_client_url = "http://starknet-devnet:5050/rpc"
+starknet_client_url = "http://starknet-devnet:5050"
 
 [starknet_devnet.network]
 # Placeholder until Starknet chain_id is wired throughout the codebase.

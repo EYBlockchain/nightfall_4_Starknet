@@ -27,6 +27,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Dropping database: {DB}");
     let _ = lib::utils::drop_database(db_url, DB).await;
 
+    if settings.backend_kind == configuration::settings::BackendKind::Starknet {
+        info!("backend_kind=starknet: starting HTTP server only (skipping block assembly/event listener)");
+        let routes = routes::<P, E>();
+        warp::serve(routes).run(([0, 0, 0, 0], 3000)).await;
+        return Ok(());
+    }
+
     let task_0 = if settings.mock_prover {
         info!("Using MockProver");
         tokio::spawn(start_block_assembly::<P, MockProver, N>())
@@ -35,9 +42,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         tokio::spawn(start_block_assembly::<P, RollupProver, N>())
     };
 
-    // start the event listener
-    // ── start the (owned) event listener once ─────────────────────────────────
-    ensure_running::<P, E, N>().await;
+    if settings.backend_kind == configuration::settings::BackendKind::Starknet {
+        info!("backend_kind=starknet: skipping EVM event listener startup");
+    } else {
+        // start the event listener
+        // ── start the (owned) event listener once ─────────────────────────────────
+        ensure_running::<P, E, N>().await;
+    }
 
     let routes = routes::<P, E>();
     let task_2 = tokio::spawn(warp::serve(routes).run(([0, 0, 0, 0], 3000)));

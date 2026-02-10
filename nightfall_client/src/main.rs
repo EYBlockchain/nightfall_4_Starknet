@@ -45,8 +45,12 @@ async fn main() -> Result<(), JoinError> {
         .await
         .expect("Failed to drop Requests collection");
 
-    // ── start the (owned) event listener once ─────────────────────────────────
-    ensure_running::<N>().await;
+    if get_settings().backend_kind == configuration::settings::BackendKind::Starknet {
+        info!("backend_kind=starknet: skipping EVM event listener startup");
+    } else {
+        // ── start the (owned) event listener once ─────────────────────────────────
+        ensure_running::<N>().await;
+    }
 
     // ── start Warp server and the queue worker as independent tasks ───────────
     let routes = routes::<PlonkProof, Nightfall::NightfallCalls>();

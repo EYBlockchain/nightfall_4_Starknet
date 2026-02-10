@@ -179,6 +179,49 @@ Most of NF_4 is configured using a single file (`nightfall.toml`) in the project
 
 Starknet-first usage is supported via a backend selector (`backend_kind` / `NF4_BACKEND_KIND`). The supported values are `starknet` and `evm` (with legacy `ethereum` accepted for backwards compatibility). The recommended path for new setups is the `starknet_devnet` profile (`NF4_RUN_MODE=starknet_devnet`) with a Starknet RPC URL set via `NF4_STARKNET_CLIENT_URL` (see the example in `nightfall.toml`).
 
+For local development, this repo uses Katana (Dojo's local Starknet sequencer) as the Starknet devnet equivalent of Anvil.
+
+### Katana devnet quickstart
+
+Start Katana via Docker Compose:
+
+```sh
+export NF4_RUN_MODE=starknet_devnet
+docker compose --profile starknet_devnet up -d starknet-devnet
+```
+
+Point NF4 at the devnet:
+
+```sh
+export NF4_STARKNET_CLIENT_URL=http://starknet-devnet:5050
+```
+
+Smoke test the RPC is reachable:
+
+```sh
+curl -sS -X POST http://localhost:5050 \
+  -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"starknet_chainId","params":[]}'
+```
+
+### Katana devnet (local, no Docker)
+
+If Docker pulls/builds are blocked (proxy/DNS), run Katana locally and point NF4 at it:
+
+```sh
+export NF4_RUN_MODE=starknet_devnet
+export NF4_STARKNET_CLIENT_URL=http://127.0.0.1:5050
+katana --http.addr 127.0.0.1 --http.port 5050
+```
+
+Then, in a separate terminal:
+
+```sh
+curl -sS -X POST http://127.0.0.1:5050 \
+  -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"starknet_chainId","params":[]}'
+```
+
 Do not confuse NF4_RUN_MODE, which selects the top-level section of `nightfall.toml` that will be used by the applications, and the docker compose `--profile`, which selects the containers that will be run (different profiles generally select different test containers, but they have wider applicability).
 
 Additonally, any configuration item can also be overridden via an enviroment variable by naming an environment variable `NF4_<name of variable in nightfall.toml>`. You do not need to include the main section name: that is taken from the environment variable `NF4_RUN_MODE`. It defaults to `development` if `NF4_RUN_MODE` is not set. Some configuration variables are in sub-categories, for example under `[development.nightfall_deployer]`. Use a double __ to identify a variable within a sub-category (replacing the dot that would be used in the equivalent Rust struct). For example, the `log_level` variable in `nightfall.toml` that is under `[development]` under `[development.nightfall_deployer]` would be overridden by the environment variable `NF4_NIGHTFALL_DEPLOYER__LOG_LEVEL`, provided of course that `NF4_RUN_MODE` is set to `development` (or left unset).

@@ -335,6 +335,11 @@ impl BlockchainClientConnection for LocalWsClient {
     async fn try_from_settings(
         settings: &Self::S,
     ) -> Result<Self, BlockchainClientConnectionError> {
+        if configuration::settings::BackendKind::Starknet == settings.backend_kind {
+            return Err(BlockchainClientConnectionError::ProviderError(
+                "EVM websocket client not available when backend_kind=starknet".to_string(),
+            ));
+        }
         match settings.nightfall_client.wallet_type {
             // Handle different wallet types
             WalletTypeConfig::Local => {

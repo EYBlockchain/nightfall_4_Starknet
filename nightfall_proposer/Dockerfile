@@ -1,5 +1,8 @@
 FROM rust:1.88.0 AS builder
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY configuration/trust/* /usr/local/share/ca-certificates/
+RUN chmod 644 /usr/local/share/ca-certificates/* && update-ca-certificates
 RUN mkdir bin
 COPY . .
 RUN --mount=type=cache,id=cargo-registry-v4,target=/usr/local/cargo/registry,sharing=locked \

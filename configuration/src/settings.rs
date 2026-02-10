@@ -136,21 +136,29 @@ pub struct Settings {
     pub azure_key_name: String,
     #[serde(default)]
     pub backend_kind: BackendKind,
+    #[serde(default)]
     pub log_app_only: bool,
+    #[serde(default)]
     pub test_x509_certificates: bool,
+    #[serde(default)]
     pub mock_prover: bool,
     pub skip_key_regeneration: Option<bool>,
     pub nightfall_client: ClientConfig,
+    #[serde(default)]
     pub contracts: Contracts,
     pub nightfall_deployer: DeployerConfig,
     pub nightfall_proposer: ProposerConfig,
     pub network: Network,
+    #[serde(default)]
     pub ethereum_client_url: String,
     #[serde(default)]
     pub starknet_client_url: String,
     pub nightfall_test: TestConfig,
+    #[serde(default)]
     pub genesis_block: usize,
+    #[serde(default)]
     pub certificates: CertificateConfig,
+    #[serde(default)]
     pub configuration_url: String,
     pub run_mode: String,
     /// Optional upper bound
