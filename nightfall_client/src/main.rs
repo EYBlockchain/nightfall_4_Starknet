@@ -11,9 +11,10 @@ use nightfall_bindings::artifacts::Nightfall;
 use nightfall_client::{
     domain::entities::Request,
     driven::queue::process_queue,
-    drivers::{blockchain::event_listener_manager::ensure_running, rest::routes},
+    drivers::{blockchain::event_listener_manager::ensure_running, rest::routes, starknet_event_poller},
 };
 use tokio::task::JoinError;
+use futures::FutureExt;
 
 #[tokio::main]
 async fn main() -> Result<(), JoinError> {
@@ -46,9 +47,17 @@ async fn main() -> Result<(), JoinError> {
         .expect("Failed to drop Requests collection");
 
     if get_settings().backend_kind == configuration::settings::BackendKind::Starknet {
-        info!("backend_kind=starknet: skipping EVM event listener startup");
+        info!("backend_kind=starknet: starting Starknet event poller");
+        tokio::spawn(async {
+            let res = std::panic::AssertUnwindSafe(starknet_event_poller::start_starknet_event_poller())
+                .catch_unwind()
+                .await;
+            match res {
+                Ok(_) => log::warn!("starknet poller task exited unexpectedly"),
+                Err(_) => log::error!("starknet poller task panicked"),
+            }
+        });
     } else {
-        // ── start the (owned) event listener once ─────────────────────────────────
         ensure_running::<N>().await;
     }
 

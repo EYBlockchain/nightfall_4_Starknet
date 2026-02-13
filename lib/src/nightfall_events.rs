@@ -1,8 +1,8 @@
+use crate::chain_client::types::{Address, U256};
 use serde::{Deserialize, Serialize};
 
-use crate::chain_client::types::{Address, U256};
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum NightfallEvent {
     BlockProposed {
         block_number: u64,

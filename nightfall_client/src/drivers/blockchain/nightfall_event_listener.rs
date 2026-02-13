@@ -126,7 +126,8 @@ pub async fn listen_for_events<N: NightfallContract>(
                     warn!("Failed to decode log: {e:?}");
                     continue;
                 }
-                let event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
+
+                let legacy_event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
                     Ok(e) => e,
                     Err(e) => {
                         warn!("Failed to decode log (legacy): {e:?}");
@@ -134,7 +135,7 @@ pub async fn listen_for_events<N: NightfallContract>(
                     }
                 };
 
-                let result = process_events::<N>(event.data, evt).await;
+                let result = process_events::<N>(legacy_event.data, evt).await;
                 match result {
                     Ok(_) => continue,
                     Err(e) => {
@@ -164,15 +165,17 @@ pub async fn listen_for_events<N: NightfallContract>(
         if let Err(e) = evm_event_decoder::evm::decode_nightfall_log(&evt) {
             warn!("Failed to decode log: {e:?}");
             continue;
-        }
-        let event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
+        };
+
+        let legacy_event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
             Ok(e) => e,
             Err(e) => {
                 warn!("Failed to decode log (legacy): {e:?}");
                 continue;
             }
         };
-        let result = process_events::<N>(event.data, evt).await;
+
+        let result = process_events::<N>(legacy_event.data, evt).await;
         match result {
             Ok(_) => continue,
             Err(e) => {

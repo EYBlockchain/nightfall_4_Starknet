@@ -8,6 +8,9 @@ pub fn init_logging(log_level: &str, app_only: bool) {
         match log_level {
             "debug" => Builder::new()
                 .filter_level(LevelFilter::Debug)
+                .filter_module("lib", LevelFilter::Debug)
+                .filter_module("nightfall_client", LevelFilter::Debug)
+                .filter_module("nightfall_proposer", LevelFilter::Debug)
                 .filter_module("alloy_provider", LevelFilter::Error)
                 .filter_module("warp", LevelFilter::Warn)
                 .filter_module("hyper", LevelFilter::Warn)
@@ -15,6 +18,9 @@ pub fn init_logging(log_level: &str, app_only: bool) {
                 .init(),
             "info" => Builder::new()
                 .filter_level(LevelFilter::Info)
+                .filter_module("lib", LevelFilter::Info)
+                .filter_module("nightfall_client", LevelFilter::Info)
+                .filter_module("nightfall_proposer", LevelFilter::Info)
                 .filter_module("alloy_provider", LevelFilter::Error)
                 .filter_module("warp", LevelFilter::Warn)
                 .filter_module("hyper", LevelFilter::Warn)

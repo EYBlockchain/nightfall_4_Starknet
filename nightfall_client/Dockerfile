@@ -1,6 +1,10 @@
 # syntax=docker/dockerfile:1-labs
 FROM rust:1.88.0 AS builder
 
+ENV CARGO_NET_RETRY=10 \
+    CARGO_HTTP_TIMEOUT=600 \
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY configuration/trust/* /usr/local/share/ca-certificates/
@@ -11,7 +15,7 @@ COPY configuration/bin/ configuration/bin/
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     --mount=type=cache,target=/usr/local/cargo/git \
-    cargo build --package nightfall_client --release && \
+    cargo build --package nightfall_client --release --features lib/backend_starknet && \
     mv /app/target/release/nightfall_client /app/bin/client
 
 FROM debian:bookworm-slim

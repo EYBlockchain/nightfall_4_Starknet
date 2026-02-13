@@ -2,6 +2,8 @@
 
 use ark_std::cfg_iter;
 use itertools::{izip, Itertools};
+#[cfg(feature = "parallel")]
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use jf_plonk::{
     errors::PlonkError,
     nightfall::ipa_structs::VerifyingKey,

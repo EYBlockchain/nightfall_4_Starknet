@@ -2,6 +2,8 @@ pub mod types;
 
 pub mod signer;
 
+pub mod polling;
+
 #[cfg(feature = "backend_evm")]
 pub mod evm;
 

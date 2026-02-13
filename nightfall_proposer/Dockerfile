@@ -1,4 +1,9 @@
 FROM rust:1.88.0 AS builder
+
+ENV CARGO_NET_RETRY=10 \
+    CARGO_HTTP_TIMEOUT=600 \
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY configuration/trust/* /usr/local/share/ca-certificates/
@@ -8,7 +13,7 @@ COPY . .
 RUN --mount=type=cache,id=cargo-registry-v4,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=cargo-git-v4,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,id=cargo-target-client-v4,target=/app/target,sharing=private \
-    cargo build --package nightfall_proposer --release && \
+    cargo build --package nightfall_proposer --release --features lib/backend_starknet && \
     mv /app/target/release/nightfall_proposer /app/bin/proposer
 FROM debian:bookworm-slim
 WORKDIR /app

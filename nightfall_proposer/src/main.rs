@@ -5,7 +5,7 @@ use nightfall_bindings::artifacts::Nightfall;
 use nightfall_proposer::drivers::blockchain::event_listener_manager::ensure_running;
 use nightfall_proposer::{
     driven::{db::mongo_db::DB, mock_prover::MockProver, rollup_prover::RollupProver},
-    drivers::{blockchain::block_assembly::start_block_assembly, rest::routes},
+    drivers::{blockchain::block_assembly::start_block_assembly, rest::routes, starknet_event_poller},
 };
 use std::error::Error;
 
@@ -28,7 +28,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let _ = lib::utils::drop_database(db_url, DB).await;
 
     if settings.backend_kind == configuration::settings::BackendKind::Starknet {
-        info!("backend_kind=starknet: starting HTTP server only (skipping block assembly/event listener)");
+        info!("backend_kind=starknet: starting HTTP server + Starknet event poller (skipping block assembly/EVM listener)");
+        tokio::spawn(starknet_event_poller::start_starknet_event_poller());
         let routes = routes::<P, E>();
         warp::serve(routes).run(([0, 0, 0, 0], 3000)).await;
         return Ok(());

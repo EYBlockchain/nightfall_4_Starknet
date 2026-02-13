@@ -17,6 +17,8 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, SerializationError
 use ark_std::cfg_iter;
 use hex::FromHex;
 use itertools::{izip, Itertools};
+#[cfg(feature = "parallel")]
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use jf_plonk::{
     errors::PlonkError,
     nightfall::{

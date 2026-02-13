@@ -138,14 +138,15 @@ where
                     continue;
                 }
 
-                let event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
+                let legacy_event = match Nightfall::NightfallEvents::decode_log(&evt.inner) {
                     Ok(e) => e,
                     Err(e) => {
                         warn!("Failed to decode log (legacy): {e:?}");
                         continue;
                     }
                 };
-                let result = process_events::<P, E, N>(event.data, evt).await;
+
+                let result = process_events::<P, E, N>(legacy_event.data, evt).await;
                 match result {
                     Ok(_) => continue,
                     Err(e) => {
@@ -181,16 +182,17 @@ where
         if let Err(e) = evm_event_decoder::evm::decode_nightfall_log(&log) {
             warn!("Failed to decode log: {e:?}");
             continue;
-        }
+        };
 
-        let event = match Nightfall::NightfallEvents::decode_log(&log.inner) {
+        let legacy_event = match Nightfall::NightfallEvents::decode_log(&log.inner) {
             Ok(e) => e,
             Err(e) => {
                 warn!("Failed to decode log (legacy): {e:?}");
                 continue;
             }
         };
-        let result = process_events::<P, E, N>(event.data, log).await;
+
+        let result = process_events::<P, E, N>(legacy_event.data, log).await;
         match result {
             Ok(_) => continue,
             Err(e) => {
