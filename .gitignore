@@ -2,6 +2,14 @@
 # will have compiled files and executables
 /target/
 
+# Starknet devnet / Scarb build outputs
+starknet_assets/**/target/
+starknet_assets/artifacts/*.txt
+starknet_assets/artifacts/*.json
+
+# Rust tool local build outputs (if built outside workspace root)
+starknet_assets/rust/target/
+
 # Remove Cargo.lock from gitignore if creating an executable, leave it for libraries
 # More information here https://doc.rust-lang.org/cargo/guide/cargo-toml-vs-cargo-lock.html
 # Cargo.lock

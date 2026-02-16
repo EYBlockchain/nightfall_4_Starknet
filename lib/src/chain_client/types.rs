@@ -52,6 +52,36 @@ pub struct ContractId(pub Address);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Address(pub [u8; 32]);
 
+impl Address {
+    pub fn from_hex_str(hex: &str) -> Result<Self, &'static str> {
+        let s = hex.trim();
+        let s = s.strip_prefix("0x").unwrap_or(s);
+        if s.is_empty() || s.len() > 64 {
+            return Err("invalid hex length");
+        }
+
+        let mut decoded = Vec::with_capacity(s.len().div_ceil(2));
+        let mut i = 0usize;
+        if s.len() % 2 == 1 {
+            let b = u8::from_str_radix(&format!("0{}", &s[0..1]), 16).map_err(|_| "invalid hex")?;
+            decoded.push(b);
+            i = 1;
+        }
+        while i < s.len() {
+            let b = u8::from_str_radix(&s[i..i + 2], 16).map_err(|_| "invalid hex")?;
+            decoded.push(b);
+            i += 2;
+        }
+        if decoded.len() > 32 {
+            return Err("invalid hex length");
+        }
+
+        let mut out = [0u8; 32];
+        out[32 - decoded.len()..].copy_from_slice(&decoded);
+        Ok(Address(out))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawEvent {
     pub block_number: BlockNumber,

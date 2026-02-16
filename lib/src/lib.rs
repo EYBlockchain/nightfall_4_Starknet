@@ -22,6 +22,7 @@ pub mod validate_certificate;
 pub mod validate_keys;
 pub mod nightfall_events;
 pub mod evm_event_decoder;
+pub mod starknet_event_decoder;
 pub mod verify_contract;
 pub mod wallets;
 

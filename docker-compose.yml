@@ -41,6 +41,7 @@ services:
       - NF4_SIGNING_KEY=${CLIENT_SIGNING_KEY}
       - NF4_NIGHTFALL_CLIENT__DB_URL=mongodb://nf4_db_client:27017
       - NF4_STARKNET_CLIENT_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050}
+      - NF4_STARKNET_EVENTS_CONTRACT_ADDRESS=${NF4_STARKNET_EVENTS_CONTRACT_ADDRESS:-}
       - AZURE_VAULT_URL=${AZURE_VAULT_URL}
       - AZURE_KEY_NAME=${CLIENT_SIGNING_KEY_NAME}
       - CLIENT_SIGNING_KEY_NAME=${CLIENT_SIGNING_KEY_NAME}          
@@ -172,6 +173,7 @@ services:
       - NF4_SIGNING_KEY=${PROPOSER_SIGNING_KEY}
       - NF4_MOCK_PROVER=${NF4_MOCK_PROVER:-true}
       - NF4_STARKNET_CLIENT_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050}
+      - NF4_STARKNET_EVENTS_CONTRACT_ADDRESS=${NF4_STARKNET_EVENTS_CONTRACT_ADDRESS:-}
       - AZURE_VAULT_URL=${AZURE_VAULT_URL}
       - PROPOSER_SIGNING_KEY_NAME=${PROPOSER_SIGNING_KEY_NAME}
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
@@ -491,7 +493,7 @@ services:
       - starknet_devnet
     image: ghcr.io/dojoengine/katana:latest
     platform: linux/amd64 # Required for building on M1 Macs
-    command: ["katana", "--http.addr", "0.0.0.0", "--http.port", "5050"]
+    command: ["katana", "--http.addr", "0.0.0.0", "--http.port", "5050", "--dev", "--dev.no-fee", "--dev.no-account-validation"]
     ports:
       - "5050:5050"
     networks:
@@ -502,6 +504,38 @@ services:
       timeout: 90s
       retries: 10
       start_period: 0s
+
+  starknet-emitter:
+    container_name: starknet-emitter
+    stop_grace_period: 3s
+    profiles:
+      - starknet_devnet
+    build:
+      context: .
+      dockerfile: starknet_assets/rust/Dockerfile
+    platform: linux/amd64 # Required for building on M1 Macs
+    networks:
+      - nightfall_network
+    depends_on:
+      starknet-devnet:
+        condition: service_healthy
+    environment:
+      - STARKNET_RPC_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050}
+    volumes:
+      - ./starknet_assets:/starknet_assets
+    command: ["/bin/sh", "-lc", "\
+      set -euo pipefail; \
+      echo '==> deploying dummy emitter'; \
+      /app/nf4_starknet_emitter_tool --rpc-url http://starknet-devnet:5050 deploy \
+        --artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.contract_class.json \
+        --compiled-artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.compiled_contract_class.json \
+        --out-file /starknet_assets/artifacts/dummy_emitter_address.txt; \
+      echo '==> emitting sample events'; \
+      chmod +x /starknet_assets/scripts/emit_events_from_file.sh; \
+      /starknet_assets/scripts/emit_events_from_file.sh; \
+      echo '==> done (tailing)'; \
+      tail -f /dev/null \
+    "]
 
   test:
     container_name: nf4_test

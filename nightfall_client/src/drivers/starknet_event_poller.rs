@@ -1,7 +1,9 @@
 use configuration::settings::get_settings;
 use lib::chain_client::polling::{poll_events_forever, PollConfig};
-use lib::chain_client::types::{BlockNumber, EventFilter};
+use lib::chain_client::types::{Address, BlockNumber, ContractId, EventFilter};
 use lib::chain_client::get_chain_client;
+use lib::starknet_event_decoder;
+use crate::services::process_starknet_events;
 use log::info;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::io::Write;
@@ -39,10 +41,20 @@ pub async fn start_starknet_event_poller() {
         start_block: BlockNumber(0),
     };
 
-    let filter = EventFilter {
-        contract: None,
-        keys: vec![],
+    let contract = match settings.starknet_events_contract_address.trim() {
+        "" => None,
+        hex => match Address::from_hex_str(hex) {
+            Ok(addr) => Some(ContractId(addr)),
+            Err(e) => {
+                log::error!(
+                    "invalid NF4_STARKNET_EVENTS_CONTRACT_ADDRESS / starknet_events_contract_address: {hex} ({e})"
+                );
+                return;
+            }
+        },
     };
+
+    let filter = EventFilter { contract, keys: vec![] };
 
     static TICKS: AtomicU64 = AtomicU64::new(0);
 
@@ -51,6 +63,30 @@ pub async fn start_starknet_event_poller() {
         info!("starknet poller tick #{tick}: received {} events", events.len());
         eprintln!("starknet poller tick #{tick}: received {} events", events.len());
         let _ = std::io::stderr().flush();
+
+        for (idx, ev) in events.iter().enumerate() {
+            info!(
+                "starknet event[{idx}]: block={} contract=0x{} keys={} data_len={} tx=0x{}",
+                ev.block_number.0,
+                hex::encode(ev.contract.0 .0),
+                ev.keys.len(),
+                ev.data.len(),
+                hex::encode(ev.tx_hash.0)
+            );
+
+            match starknet_event_decoder::starknet::decode_dummy_emitter_event(ev) {
+                Ok(decoded) => {
+                    info!("starknet decoded event[{idx}]: {decoded:?}");
+                    // For now this just logs; later it can drive real domain processing.
+                    let _ = tokio::spawn(async move {
+                        if let Err(e) = process_starknet_events::process_starknet_event(decoded).await {
+                            log::warn!("process_starknet_event failed: {e}");
+                        }
+                    });
+                }
+                Err(e) => info!("starknet undecoded event[{idx}]: {e}"),
+            }
+        }
     })
     .await;
 

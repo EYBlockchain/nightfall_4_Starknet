@@ -14,14 +14,17 @@ async fn starknet_get_events_smoke_katana() {
         .unwrap_or_else(|_| "http://127.0.0.1:5050".to_string());
 
     // Minimal request that Katana accepts in practice.
+    // Notes:
+    // - Katana expects JSON-RPC params as a positional array.
+    // - Block selectors should be shaped like `{ "block_number": N }`.
     let payload = json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "starknet_getEvents",
         "params": [{
             "filter": {
-                "from_block": { "block_id": "number", "block_number": 0 },
-                "to_block": { "block_id": "number", "block_number": 0 },
+                "from_block": { "block_number": 0 },
+                "to_block": { "block_number": 0 },
                 "keys": []
             },
             "chunk_size": 10

@@ -86,7 +86,14 @@ fn hex_felts_to_bytes(felts: &[String]) -> Result<Vec<u8>, ChainClientError> {
 }
 
 fn bytes32_to_starknet_hex(value: [u8; 32]) -> String {
-    format!("0x{}", hex::encode(value))
+    // Starknet / Katana uses minimal hex (no leading zeros) for addresses.
+    let full = hex::encode(value);
+    let stripped = full.trim_start_matches('0');
+    if stripped.is_empty() {
+        "0x0".to_string()
+    } else {
+        format!("0x{stripped}")
+    }
 }
 
 pub struct StarknetChainClient {
@@ -231,6 +238,12 @@ impl ChainClient for StarknetChainClient {
             };
 
             let res: StarknetGetEventsResult = self.rpc_call("starknet_getEvents", req).await?;
+
+            // Katana may return a continuation_token even when no events remain.
+            // Break early to avoid an infinite loop.
+            if res.events.is_empty() {
+                break;
+            }
 
             for e in res.events {
                 let block_number = e

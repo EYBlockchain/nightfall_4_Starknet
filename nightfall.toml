@@ -146,6 +146,7 @@ oid_group = 0
 # configuration is not used here and will be wired up once the chain-neutral adapter layer is in place.
 backend_kind = "starknet"
 starknet_client_url = "http://starknet-devnet:5050"
+starknet_events_contract_address = ""
 
 [starknet_devnet.network]
 # Placeholder until Starknet chain_id is wired throughout the codebase.

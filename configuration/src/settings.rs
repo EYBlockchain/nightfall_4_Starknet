@@ -153,6 +153,8 @@ pub struct Settings {
     pub ethereum_client_url: String,
     #[serde(default)]
     pub starknet_client_url: String,
+    #[serde(default)]
+    pub starknet_events_contract_address: String,
     pub nightfall_test: TestConfig,
     #[serde(default)]
     pub genesis_block: usize,
