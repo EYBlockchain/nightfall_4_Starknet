@@ -27,6 +27,10 @@ docker compose --profile starknet_devnet up -d --build
 ./starknet_assets/scripts/deploy_and_emit.sh
 ```
 
+This writes:
+- `starknet_assets/artifacts/dummy_emitter_address.txt`
+- `starknet_assets/artifacts/dummy_emitter_class_hash.txt`
+
 If `starkli` is not working with your Katana version, you can still validate
 RPC connectivity via the Rust helper:
 

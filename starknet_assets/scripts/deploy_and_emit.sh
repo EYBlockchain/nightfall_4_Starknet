@@ -4,6 +4,7 @@ set -euo pipefail
 RPC_URL="${NF4_STARKNET_CLIENT_URL:-http://localhost:5050}"
 CONTRACT_PATH="${NF4_DUMMY_EMITTER_CONTRACT_PATH:-$(cd "$(dirname "$0")/.." && pwd)/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.contract_class.json}"
 OUT_FILE="${NF4_DUMMY_EMITTER_OUT_FILE:-$(cd "$(dirname "$0")/.." && pwd)/artifacts/dummy_emitter_address.txt}"
+CLASS_HASH_OUT_FILE="${NF4_DUMMY_EMITTER_CLASS_HASH_OUT_FILE:-$(cd "$(dirname "$0")/.." && pwd)/artifacts/dummy_emitter_class_hash.txt}"
 
 # Katana prints prefunded accounts (address + private key) at startup.
 # If you don't set these, starkli will prompt/fail.
@@ -81,6 +82,20 @@ echo "Wrote address to: $OUT_FILE"
 
 echo "\nExport this to enable NF4 filtering:"
 echo "export NF4_STARKNET_EVENTS_CONTRACT_ADDRESS=$ADDRESS"
+
+echo "\n==> Fetching deployed class hash"
+ON_CHAIN_CLASS_HASH=$(curl -sS "$RPC_URL" -H 'content-type: application/json' -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"starknet_getClassHashAt\",\"params\":[\"latest\",\"$ADDRESS\"]}" \
+  | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get("result",""))')
+
+if [[ -z "${ON_CHAIN_CLASS_HASH}" ]]; then
+  echo "Could not fetch class hash from RPC; falling back to parsed declare hash: ${CLASS_HASH}" >&2
+  ON_CHAIN_CLASS_HASH="$CLASS_HASH"
+fi
+
+echo -n "$ON_CHAIN_CLASS_HASH" > "$CLASS_HASH_OUT_FILE"
+echo "Wrote class hash to: $CLASS_HASH_OUT_FILE"
+echo "Export this to enable startup verification:"
+echo "export NF4_STARKNET_EXPECTED_CLASS_HASH=$ON_CHAIN_CLASS_HASH"
 
 echo "\n==> Emitting sample events"
 # Use a deterministic block_number and root.

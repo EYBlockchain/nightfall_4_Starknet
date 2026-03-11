@@ -31,7 +31,8 @@ cd /Users/Adarsh.Ron/nightfall_4_Starknet
 docker compose --profile starknet_devnet up --build starknet-devnet starknet-emitter
 ```
 
-This writes the deployed address to `starknet_assets/artifacts/dummy_emitter_address.txt`.
+This writes the deployed address to `starknet_assets/artifacts/dummy_emitter_address.txt`
+and the deployed class hash to `starknet_assets/artifacts/dummy_emitter_class_hash.txt`.
 
 ### Run client/proposer with contract filtering
 
