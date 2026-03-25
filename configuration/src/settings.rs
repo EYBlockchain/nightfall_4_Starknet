@@ -155,6 +155,12 @@ pub struct Settings {
     pub starknet_client_url: String,
     #[serde(default)]
     pub starknet_events_contract_address: String,
+    #[serde(default)]
+    pub starknet_account_address: String,
+    #[serde(default)]
+    pub starknet_verify_class_hash: bool,
+    #[serde(default)]
+    pub starknet_expected_class_hash: String,
     pub nightfall_test: TestConfig,
     #[serde(default)]
     pub genesis_block: usize,

@@ -147,6 +147,9 @@ oid_group = 0
 backend_kind = "starknet"
 starknet_client_url = "http://starknet-devnet:5050"
 starknet_events_contract_address = ""
+starknet_account_address = ""
+starknet_verify_class_hash = false
+starknet_expected_class_hash = ""
 
 [starknet_devnet.network]
 # Placeholder until Starknet chain_id is wired throughout the codebase.

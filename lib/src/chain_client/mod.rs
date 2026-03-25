@@ -72,7 +72,32 @@ pub async fn get_chain_client(
 						"missing starknet_client_url".to_string(),
 					));
 				}
-				Ok(Arc::new(starknet::StarknetChainClient::new(url)))
+
+				let client = starknet::StarknetChainClient::new(url);
+
+				if settings.starknet_verify_class_hash {
+					if settings.starknet_expected_class_hash.trim().is_empty() {
+						log::warn!(
+							"starknet_verify_class_hash=true but NF4_STARKNET_EXPECTED_CLASS_HASH is empty; skipping verification"
+						);
+					} else {
+						if settings.starknet_events_contract_address.trim().is_empty() {
+							return Err(ChainClientError::Rpc(
+								"starknet_verify_class_hash=true but NF4_STARKNET_EVENTS_CONTRACT_ADDRESS is empty"
+									.to_string(),
+							));
+						}
+
+						client
+							.verify_class_hash(
+								&settings.starknet_events_contract_address,
+								&settings.starknet_expected_class_hash,
+							)
+							.await?;
+					}
+				}
+
+				Ok(Arc::new(client))
 			}
 			#[cfg(not(feature = "backend_starknet"))]
 			{
@@ -85,8 +110,6 @@ pub async fn get_chain_client(
 }
 
 /// Initialize a chain-neutral signer selected by configuration.
-///
-/// For now this is only implemented for the EVM backend.
 pub async fn get_chain_signer(
 	settings: &configuration::settings::Settings,
 ) -> Result<Arc<dyn signer::ChainSigner>, ChainClientError> {
@@ -107,9 +130,33 @@ pub async fn get_chain_signer(
 				))
 			}
 		}
-		configuration::settings::BackendKind::Starknet => Err(ChainClientError::NotSupported(
-			"Starknet backend not implemented yet".to_string(),
-		)),
+		configuration::settings::BackendKind::Starknet => {
+			#[cfg(feature = "backend_starknet")]
+			{
+				if settings.signing_key.trim().is_empty() {
+					return Err(ChainClientError::Rpc(
+						"missing NF4_SIGNING_KEY for Starknet backend".to_string(),
+					));
+				}
+				if settings.starknet_account_address.trim().is_empty() {
+					return Err(ChainClientError::Rpc(
+						"missing NF4_STARKNET_ACCOUNT_ADDRESS for Starknet backend".to_string(),
+					));
+				}
+
+				let signer = signer::starknet::StarknetSigner::from_hex_key(
+					&settings.signing_key,
+					&settings.starknet_account_address,
+				)?;
+				Ok(Arc::new(signer))
+			}
+			#[cfg(not(feature = "backend_starknet"))]
+			{
+				Err(ChainClientError::NotSupported(
+					"Starknet backend selected but `backend_starknet` feature is disabled".to_string(),
+				))
+			}
+		}
 	}
 }
 

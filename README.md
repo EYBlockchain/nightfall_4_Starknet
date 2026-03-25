@@ -41,6 +41,32 @@ export NF4_STARKNET_EVENTS_CONTRACT_ADDRESS="$(cat ./starknet_assets/artifacts/d
 docker compose --profile starknet_devnet up --build client proposer
 ```
 
+### Starknet account management via env (EVM-style)
+
+Use the same local private-key flow as EVM for local development by setting keys in your env file (`.env` / local env file used by compose):
+
+```sh
+export NF4_RUN_MODE=starknet_devnet
+export CLIENT_SIGNING_KEY=0x...
+export PROPOSER_SIGNING_KEY=0x...
+export CLIENT_STARKNET_ACCOUNT_ADDRESS=0x...
+export PROPOSER_STARKNET_ACCOUNT_ADDRESS=0x...
+export NF4_STARKNET_EVENTS_CONTRACT_ADDRESS="$(cat ./starknet_assets/artifacts/dummy_emitter_address.txt)"
+```
+
+`client` and `proposer` containers map these into `NF4_SIGNING_KEY` and
+`NF4_STARKNET_ACCOUNT_ADDRESS` at startup, so no code changes are needed between
+EVM and Starknet dev key management patterns.
+
+Current chain-neutral Starknet transaction conventions in `lib::chain_client`:
+- `call_view(contract, calldata)` expects `calldata` encoded as 32-byte words:
+	first word is the Starknet entrypoint selector, remaining words are calldata felts.
+- `send_transaction(tx)` expects `tx.bytes` to contain UTF-8 JSON for the
+	`invoke_transaction` object accepted by `starknet_addInvokeTransaction`.
+
+These conventions are an interim compatibility layer until a dedicated
+Starknet-native transaction type is introduced in the chain-neutral API.
+
 ### Optional: raw JSON-RPC event watcher
 
 ```sh

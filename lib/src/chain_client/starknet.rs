@@ -3,6 +3,7 @@ use super::types::{Address, BlockNumber, ChainId, ContractId, EventFilter, RawEv
 use async_trait::async_trait;
 use hex;
 use reqwest::Client;
+use serde_json::Value;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -96,6 +97,24 @@ fn bytes32_to_starknet_hex(value: [u8; 32]) -> String {
     }
 }
 
+fn tx_hash_to_hex(tx_hash: TxHash) -> String {
+    bytes32_to_starknet_hex(tx_hash.0)
+}
+
+fn bytes_to_words(data: &[u8]) -> Result<Vec<[u8; 32]>, ChainClientError> {
+    if data.is_empty() || data.len() % 32 != 0 {
+        return Err(ChainClientError::InvalidCalldata);
+    }
+
+    let mut out = Vec::with_capacity(data.len() / 32);
+    for chunk in data.chunks_exact(32) {
+        let mut word = [0u8; 32];
+        word.copy_from_slice(chunk);
+        out.push(word);
+    }
+    Ok(out)
+}
+
 pub struct StarknetChainClient {
     rpc_url: Url,
     http: Client,
@@ -110,6 +129,45 @@ impl StarknetChainClient {
             rpc_url,
             http: Client::new(),
         }
+    }
+
+    pub async fn verify_class_hash(
+        &self,
+        contract_address: &str,
+        expected_class_hash: &str,
+    ) -> Result<(), ChainClientError> {
+        #[derive(Debug, Serialize)]
+        struct Params<'a> {
+            block_id: &'a str,
+            contract_address: &'a str,
+        }
+
+        let params = Params {
+            block_id: "latest",
+            contract_address,
+        };
+
+        let on_chain: String = self.rpc_call("starknet_getClassHashAt", params).await?;
+
+        let normalise = |h: &str| {
+            let stripped = h.strip_prefix("0x").unwrap_or(h).trim_start_matches('0');
+            if stripped.is_empty() {
+                "0".to_string()
+            } else {
+                stripped.to_ascii_lowercase()
+            }
+        };
+
+        let on_chain_norm = normalise(&on_chain);
+        let expected_norm = normalise(expected_class_hash);
+
+        if on_chain_norm != expected_norm {
+            return Err(ChainClientError::Rpc(format!(
+                "starknet class hash mismatch for {contract_address}: expected=0x{expected_norm}, on_chain=0x{on_chain_norm}"
+            )));
+        }
+
+        Ok(())
     }
 
     async fn rpc_call<TParams, TResult>(
@@ -287,27 +345,93 @@ impl ChainClient for StarknetChainClient {
 
     async fn call_view(
         &self,
-        _contract: ContractId,
-        _calldata: Vec<u8>,
+        contract: ContractId,
+        calldata: Vec<u8>,
     ) -> Result<Vec<u8>, ChainClientError> {
-        Err(ChainClientError::NotSupported(
-            "StarknetChainClient.call_view not implemented yet".to_string(),
-        ))
+        #[derive(Debug, Serialize)]
+        struct CallRequest {
+            contract_address: String,
+            entry_point_selector: String,
+            calldata: Vec<String>,
+        }
+
+        #[derive(Debug, Serialize)]
+        struct Params {
+            request: CallRequest,
+            block_id: &'static str,
+        }
+
+        let words = bytes_to_words(&calldata)?;
+        let entry_point_selector = bytes32_to_starknet_hex(words[0]);
+        let calldata_words = words
+            .iter()
+            .skip(1)
+            .map(|w| bytes32_to_starknet_hex(*w))
+            .collect::<Vec<_>>();
+
+        let params = Params {
+            request: CallRequest {
+                contract_address: bytes32_to_starknet_hex(contract.0 .0),
+                entry_point_selector,
+                calldata: calldata_words,
+            },
+            block_id: "latest",
+        };
+
+        let result: Vec<String> = self.rpc_call("starknet_call", params).await?;
+        hex_felts_to_bytes(&result)
     }
 
-    async fn send_transaction(&self, _tx: SignedTransaction) -> Result<TxHash, ChainClientError> {
-        Err(ChainClientError::NotSupported(
-            "StarknetChainClient.send_transaction not implemented yet".to_string(),
-        ))
+    async fn send_transaction(&self, tx: SignedTransaction) -> Result<TxHash, ChainClientError> {
+        #[derive(Debug, Serialize)]
+        struct Params {
+            invoke_transaction: Value,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct ResultPayload {
+            transaction_hash: String,
+        }
+
+        let invoke_transaction: Value = serde_json::from_slice(&tx.bytes)
+            .map_err(|e| ChainClientError::Rpc(format!("invalid starknet invoke payload json: {e}")))?;
+
+        let params = Params { invoke_transaction };
+        let result: ResultPayload = self
+            .rpc_call("starknet_addInvokeTransaction", params)
+            .await?;
+
+        Ok(TxHash(hex_to_32_bytes(&result.transaction_hash)?))
     }
 
     async fn wait_for_confirmation(
         &self,
-        _tx_hash: TxHash,
+        tx_hash: TxHash,
         _confirmations: u64,
     ) -> Result<TxReceipt, ChainClientError> {
-        Err(ChainClientError::NotSupported(
-            "StarknetChainClient.wait_for_confirmation not implemented yet".to_string(),
-        ))
+        #[derive(Debug, Serialize)]
+        struct Params {
+            transaction_hash: String,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct Receipt {
+            #[serde(default)]
+            execution_status: Option<String>,
+        }
+
+        let params = Params {
+            transaction_hash: tx_hash_to_hex(tx_hash),
+        };
+        let receipt: Receipt = self
+            .rpc_call("starknet_getTransactionReceipt", params)
+            .await?;
+
+        let success = !matches!(
+            receipt.execution_status.as_deref(),
+            Some("REVERTED") | Some("REJECTED")
+        );
+
+        Ok(TxReceipt { tx_hash, success })
     }
 }
