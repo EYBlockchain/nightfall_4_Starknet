@@ -40,7 +40,7 @@ services:
       - RUST_BACKTRACE=${RUST_BACKTRACE:-0}
       - NF4_SIGNING_KEY=${CLIENT_SIGNING_KEY}
       - NF4_NIGHTFALL_CLIENT__DB_URL=mongodb://nf4_db_client:27017
-      - NF4_STARKNET_CLIENT_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050}
+      - NF4_STARKNET_CLIENT_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050/rpc}
       - NF4_STARKNET_EVENTS_CONTRACT_ADDRESS=${NF4_STARKNET_EVENTS_CONTRACT_ADDRESS:-}
       - NF4_STARKNET_ACCOUNT_ADDRESS=${NF4_STARKNET_ACCOUNT_ADDRESS:-${CLIENT_STARKNET_ACCOUNT_ADDRESS:-}}
       - NF4_STARKNET_VERIFY_CLASS_HASH=${NF4_STARKNET_VERIFY_CLASS_HASH:-false}
@@ -175,7 +175,7 @@ services:
       - RUST_BACKTRACE=${RUST_BACKTRACE:-0}
       - NF4_SIGNING_KEY=${PROPOSER_SIGNING_KEY}
       - NF4_MOCK_PROVER=${NF4_MOCK_PROVER:-true}
-      - NF4_STARKNET_CLIENT_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050}
+      - NF4_STARKNET_CLIENT_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050/rpc}
       - NF4_STARKNET_EVENTS_CONTRACT_ADDRESS=${NF4_STARKNET_EVENTS_CONTRACT_ADDRESS:-}
       - NF4_STARKNET_ACCOUNT_ADDRESS=${NF4_STARKNET_ACCOUNT_ADDRESS:-${PROPOSER_STARKNET_ACCOUNT_ADDRESS:-}}
       - NF4_STARKNET_VERIFY_CLASS_HASH=${NF4_STARKNET_VERIFY_CLASS_HASH:-false}
@@ -497,19 +497,19 @@ services:
     stop_grace_period: 3s
     profiles:
       - starknet_devnet
-    image: ghcr.io/dojoengine/katana:latest
+    image: shardlabs/starknet-devnet-rs:0.8.0
     platform: linux/amd64 # Required for building on M1 Macs
-    command: ["katana", "--http.addr", "0.0.0.0", "--http.port", "5050", "--dev", "--dev.no-fee", "--dev.no-account-validation"]
+    command: ["--port", "5050", "--seed", "0", "--gas-price", "1", "--gas-price-fri", "1", "--data-gas-price", "1", "--data-gas-price-fri", "1", "--l2-gas-price", "1", "--l2-gas-price-fri", "1"]
     ports:
       - "5050:5050"
     networks:
       - nightfall_network
     healthcheck:
-      test: ["CMD", "curl", "-sS", "-H", "Content-Type: application/json", "-X", "POST", "--data", '{"jsonrpc":"2.0","method":"starknet_chainId","params":[],"id":1}', "http://127.0.0.1:5050"]
-      interval: 10s
-      timeout: 90s
-      retries: 10
-      start_period: 0s
+      test: ["CMD-SHELL", "wget -qO- --header='Content-Type: application/json' --post-data='{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"starknet_chainId\",\"params\":[]}' http://127.0.0.1:5050/rpc | grep -Eq '\"result\"[[:space:]]*:[[:space:]]*\"0x[0-9a-fA-F]+\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
 
   starknet-emitter:
     container_name: starknet-emitter
@@ -526,13 +526,13 @@ services:
       starknet-devnet:
         condition: service_healthy
     environment:
-      - STARKNET_RPC_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050}
+      - STARKNET_RPC_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050/rpc}
     volumes:
       - ./starknet_assets:/starknet_assets
     command: ["/bin/sh", "-lc", "\
       set -euo pipefail; \
       echo '==> deploying dummy emitter'; \
-      /app/nf4_starknet_emitter_tool --rpc-url http://starknet-devnet:5050 deploy \
+      /app/nf4_starknet_emitter_tool --rpc-url http://starknet-devnet:5050/rpc deploy \
         --artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.contract_class.json \
         --compiled-artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.compiled_contract_class.json \
         --out-file /starknet_assets/artifacts/dummy_emitter_address.txt; \
