@@ -30,7 +30,7 @@ fn decode_block_proposed_from_raw_event() {
     let raw = RawEvent {
         block_number: lib::chain_client::types::BlockNumber(0),
         block_hash: lib::chain_client::types::BlockHash([1u8; 32]),
-        tx_hash: lib::chain_client::types::TxHash([0u8; 32]),
+        tx_hash: lib::chain_client::types::TxHash([9u8; 32]),
         contract: lib::chain_client::types::ContractId(lib::chain_client::types::Address([0u8; 32])),
         keys: vec![selector("BlockProposed")],
         data,
@@ -38,7 +38,8 @@ fn decode_block_proposed_from_raw_event() {
 
     let decoded = decode_dummy_emitter_event(&raw).expect("decode");
     match decoded {
-        lib::nightfall_events::NightfallEvent::BlockProposed { block_number, timestamp, .. } => {
+        lib::nightfall_events::NightfallEvent::BlockProposed { tx_hash, block_number, timestamp, .. } => {
+            assert_eq!(tx_hash, lib::chain_client::types::TxHash([9u8; 32]));
             assert_eq!(block_number, 1);
             assert_eq!(timestamp, 1_700_000_000);
         }
@@ -60,7 +61,7 @@ fn decode_deposit_escrowed_from_raw_event() {
     let raw = RawEvent {
         block_number: lib::chain_client::types::BlockNumber(0),
         block_hash: lib::chain_client::types::BlockHash([2u8; 32]),
-        tx_hash: lib::chain_client::types::TxHash([0u8; 32]),
+        tx_hash: lib::chain_client::types::TxHash([7u8; 32]),
         contract: lib::chain_client::types::ContractId(lib::chain_client::types::Address([0u8; 32])),
         keys: vec![selector("DepositEscrowed")],
         data,
@@ -68,7 +69,8 @@ fn decode_deposit_escrowed_from_raw_event() {
 
     let decoded = decode_dummy_emitter_event(&raw).expect("decode");
     match decoded {
-        lib::nightfall_events::NightfallEvent::DepositEscrowed { value, .. } => {
+        lib::nightfall_events::NightfallEvent::DepositEscrowed { tx_hash, value, .. } => {
+            assert_eq!(tx_hash, lib::chain_client::types::TxHash([7u8; 32]));
             // value should be [0x44.. (16 bytes)] || [0x33.. (16 bytes)]
             assert_eq!(value.0[..16], [0x44u8; 16]);
             assert_eq!(value.0[16..], [0x33u8; 16]);

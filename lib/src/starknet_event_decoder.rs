@@ -32,6 +32,7 @@ pub mod starknet {
             let transactions_root = felt(raw, 2)?;
             let timestamp = felt_u64(&felt(raw, 3)?)?;
             return Ok(NightfallEvent::BlockProposed {
+                tx_hash: raw.tx_hash,
                 block_number,
                 proposer,
                 transactions_root,
@@ -49,6 +50,7 @@ pub mod starknet {
             let value = u256_from_low_high(value_low, value_high);
 
             return Ok(NightfallEvent::DepositEscrowed {
+                tx_hash: raw.tx_hash,
                 commitment,
                 token_id,
                 value,

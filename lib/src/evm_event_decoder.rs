@@ -27,6 +27,7 @@ pub mod evm {
 
         if topic0 == Nightfall::BlockProposed::SIGNATURE_HASH {
             return Ok(NightfallEvent::BlockProposed {
+                tx_hash: crate::chain_client::types::TxHash([0u8; 32]),
                 block_number: 0,
                 proposer: crate::chain_client::types::Address([0u8; 32]),
                 transactions_root: [0u8; 32],
@@ -36,6 +37,7 @@ pub mod evm {
 
         if topic0 == Nightfall::DepositEscrowed::SIGNATURE_HASH {
             return Ok(NightfallEvent::DepositEscrowed {
+                tx_hash: crate::chain_client::types::TxHash([0u8; 32]),
                 commitment: [0u8; 32],
                 token_id: [0u8; 32],
                 value: crate::chain_client::types::U256([0u8; 32]),

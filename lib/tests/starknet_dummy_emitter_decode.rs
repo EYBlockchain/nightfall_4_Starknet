@@ -51,6 +51,7 @@ fn decode_block_proposed() {
     assert_eq!(
         decoded,
         lib::nightfall_events::NightfallEvent::BlockProposed {
+            tx_hash: TxHash([0u8; 32]),
             block_number: 7,
             proposer,
             transactions_root: root,
@@ -100,6 +101,7 @@ fn decode_deposit_escrowed() {
     assert_eq!(
         decoded,
         lib::nightfall_events::NightfallEvent::DepositEscrowed {
+            tx_hash: TxHash([0u8; 32]),
             commitment,
             token_id,
             value: U256(value_bytes),
