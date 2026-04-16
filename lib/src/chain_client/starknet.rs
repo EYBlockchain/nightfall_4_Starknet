@@ -234,6 +234,39 @@ pub(crate) fn wrap_rpc_params(value: Value) -> Value {
     }
 }
 
+#[cfg(test)]
+mod params_wrapping_tests {
+    use super::wrap_rpc_params;
+    use serde_json::{json, Value};
+
+    #[test]
+    fn null_becomes_empty_array() {
+        assert_eq!(wrap_rpc_params(Value::Null), json!([]));
+    }
+
+    #[test]
+    fn empty_array_stays_empty() {
+        assert_eq!(wrap_rpc_params(json!([])), json!([]));
+    }
+
+    #[test]
+    fn scalar_string_wrapped_as_single_element() {
+        assert_eq!(wrap_rpc_params(json!("latest")), json!(["latest"]));
+    }
+
+    #[test]
+    fn object_wrapped_as_single_element() {
+        let obj = json!({ "filter": { "from_block": { "block_number": 0 } } });
+        let expected = json!([{ "filter": { "from_block": { "block_number": 0 } } }]);
+        assert_eq!(wrap_rpc_params(obj), expected);
+    }
+
+    #[test]
+    fn non_empty_array_wrapped_as_single_element() {
+        assert_eq!(wrap_rpc_params(json!([1, 2, 3])), json!([[1, 2, 3]]));
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct JsonRpcResponse<TResult> {
     #[allow(dead_code)]
