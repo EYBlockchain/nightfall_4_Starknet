@@ -12,13 +12,17 @@ COPY starknet_assets/rust/src /app/src
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/app/target \
     cargo build --release
 
 FROM debian:bookworm-slim
+
 WORKDIR /app
+
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/nf4_starknet_emitter_tool /app/nf4_starknet_emitter_tool
+RUN mkdir -p /app/bin
 
-ENTRYPOINT ["/app/nf4_starknet_emitter_tool"]
+COPY --from=builder /app/target/release/nf4_starknet_emitter_tool /app/bin/nf4_starknet_emitter_tool
+
+ENTRYPOINT ["/app/bin/nf4_starknet_emitter_tool"]
+CMD ["--help"]
