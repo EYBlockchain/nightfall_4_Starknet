@@ -529,19 +529,21 @@ services:
       - STARKNET_RPC_URL=${NF4_STARKNET_CLIENT_URL:-http://starknet-devnet:5050/rpc}
     volumes:
       - ./starknet_assets:/starknet_assets
-    command: ["/bin/sh", "-lc", "\
-      set -euo pipefail; \
-      echo '==> deploying dummy emitter'; \
-      /app/nf4_starknet_emitter_tool --rpc-url http://starknet-devnet:5050/rpc deploy \
-        --artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.contract_class.json \
-        --compiled-artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.compiled_contract_class.json \
-        --out-file /starknet_assets/artifacts/dummy_emitter_address.txt; \
-      echo '==> emitting sample events'; \
-      chmod +x /starknet_assets/scripts/emit_events_from_file.sh; \
-      /starknet_assets/scripts/emit_events_from_file.sh; \
-      echo '==> done (tailing)'; \
-      tail -f /dev/null \
-    "]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        set -e;
+        set -u;
+        echo '==> deploying dummy emitter';
+        /app/bin/nf4_starknet_emitter_tool --rpc-url http://starknet-devnet:5050/rpc deploy
+        --sierra-artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.contract_class.json
+        --casm-artifact /starknet_assets/cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.compiled_contract_class.json
+        --out-file /starknet_assets/artifacts/dummy_emitter_address.txt;
+        echo '==> emitting sample events';
+        chmod +x /starknet_assets/scripts/emit_events_from_file.sh;
+        /starknet_assets/scripts/emit_events_from_file.sh;
+        echo '==> done (tailing)';
+        tail -f /dev/null
 
   test:
     container_name: nf4_test

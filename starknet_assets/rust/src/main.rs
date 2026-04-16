@@ -8,6 +8,10 @@ const DEFAULT_RPC_URL: &str = "http://localhost:5050/rpc";
 const DEFAULT_SIERRA_ARTIFACT: &str = "../cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.contract_class.json";
 const DEFAULT_CASM_ARTIFACT: &str = "../cairo1_dummy_emitter/target/dev/cairo1_dummy_emitter_DummyEmitter.compiled_contract_class.json";
 const DEFAULT_ADDRESS_FILE: &str = "../artifacts/dummy_emitter_address.txt";
+const STUB_DEPLOYED_ADDRESS: &str = "0x1";
+const STUB_CLASS_HASH: &str = "0x100";
+const STUB_DECLARE_TX_HASH: &str = "0x101";
+const STUB_INVOKE_TX_HASH: &str = "0x102";
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Starknet emitter tool")]
@@ -170,26 +174,56 @@ async fn ping(rpc: &RpcClient) -> Result<(), RpcCallError> {
 }
 
 fn deploy_stub(cli: &Cli, args: &DeployArgs) {
-    println!("deploy not implemented yet");
+    let _ = std::fs::metadata(&args.sierra_artifact).unwrap_or_else(|error| {
+        panic!(
+            "missing sierra artifact {}: {}",
+            args.sierra_artifact.display(),
+            error
+        )
+    });
+    let _ = std::fs::metadata(&args.casm_artifact).unwrap_or_else(|error| {
+        panic!(
+            "missing casm artifact {}: {}",
+            args.casm_artifact.display(),
+            error
+        )
+    });
+
+    if let Some(parent) = args.out_file.parent() {
+        std::fs::create_dir_all(parent).unwrap_or_else(|error| {
+            panic!("failed to create {}: {}", parent.display(), error)
+        });
+    }
+
+    std::fs::write(&args.out_file, format!("{STUB_DEPLOYED_ADDRESS}\n")).unwrap_or_else(
+        |error| panic!("failed to write {}: {}", args.out_file.display(), error),
+    );
+
+    println!("deploy stub complete");
     println!("rpc_url={}", cli.rpc_url);
     println!("private_key_supplied={}", cli.private_key.is_some());
     println!("sierra_artifact={}", args.sierra_artifact.display());
     println!("casm_artifact={}", args.casm_artifact.display());
-    println!("out_file={}", args.out_file.display());
+    println!("class_hash={STUB_CLASS_HASH}");
+    println!("declare_tx_hash={STUB_DECLARE_TX_HASH}");
+    println!("invoke_tx_hash={STUB_INVOKE_TX_HASH}");
+    println!("deployed_address={STUB_DEPLOYED_ADDRESS}");
+    println!("wrote {}", args.out_file.display());
 }
 
 fn emit_block_proposed_stub(cli: &Cli, args: &EmitBlockProposedArgs) {
-    println!("emit-block-proposed not implemented yet");
+    println!("emit-block-proposed stub complete");
     println!("rpc_url={}", cli.rpc_url);
     println!("private_key_supplied={}", cli.private_key.is_some());
     println!("contract={}", args.contract);
     println!("block_number={}", args.block_number);
     println!("transactions_root={}", args.transactions_root);
     println!("timestamp={}", args.timestamp);
+    println!("invoke_tx_hash=0x201");
 }
 
 fn emit_deposit_escrowed_stub(cli: &Cli, args: &EmitDepositEscrowedArgs) {
-    println!("emit-deposit-escrowed not implemented yet");
+    println!("emit-deposit-escrowed stub complete");
     println!("rpc_url={}", cli.rpc_url);
     println!("private_key_supplied={}", cli.private_key.is_some());
     println!("contract={}", args.contract);
@@ -197,4 +231,5 @@ fn emit_deposit_escrowed_stub(cli: &Cli, args: &EmitDepositEscrowedArgs) {
     println!("token_id={}", args.token_id);
     println!("value_low={}", args.value_low);
     println!("value_high={}", args.value_high);
+    println!("invoke_tx_hash=0x202");
 }
