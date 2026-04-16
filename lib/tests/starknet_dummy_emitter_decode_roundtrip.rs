@@ -1,7 +1,7 @@
 #![cfg(feature = "backend_starknet")]
 
 use lib::chain_client::types::RawEvent;
-use lib::starknet_event_decoder::starknet::decode_dummy_emitter_event;
+use lib::starknet_event_decoder::starknet::default_registry;
 
 fn u64_felt(v: u64) -> [u8; 32] {
     let mut out = [0u8; 32];
@@ -36,7 +36,7 @@ fn decode_block_proposed_from_raw_event() {
         data,
     };
 
-    let decoded = decode_dummy_emitter_event(&raw).expect("decode");
+    let decoded = default_registry().decode(&raw).expect("decode");
     match decoded {
         lib::nightfall_events::NightfallEvent::BlockProposed { tx_hash, block_number, timestamp, .. } => {
             assert_eq!(tx_hash, lib::chain_client::types::TxHash([9u8; 32]));
@@ -67,7 +67,7 @@ fn decode_deposit_escrowed_from_raw_event() {
         data,
     };
 
-    let decoded = decode_dummy_emitter_event(&raw).expect("decode");
+    let decoded = default_registry().decode(&raw).expect("decode");
     match decoded {
         lib::nightfall_events::NightfallEvent::DepositEscrowed { tx_hash, value, .. } => {
             assert_eq!(tx_hash, lib::chain_client::types::TxHash([7u8; 32]));

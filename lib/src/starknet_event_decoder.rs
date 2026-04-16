@@ -4,7 +4,12 @@ use crate::nightfall_events::NightfallEvent;
 #[cfg(feature = "backend_starknet")]
 pub mod starknet {
     use super::*;
+    use crate::chain_client::types::ContractId;
     use sha3::{Digest, Keccak256};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    type DecoderFn = Arc<dyn Fn(&RawEvent) -> Result<NightfallEvent, DecodeError> + Send + Sync + 'static>;
 
     #[derive(Debug, Clone, thiserror::Error)]
     pub enum DecodeError {
@@ -20,45 +25,104 @@ pub mod starknet {
         U64Overflow,
     }
 
+    #[derive(Default, Clone)]
+    pub struct StarknetEventDecoderRegistry {
+        decoders: HashMap<(Option<ContractId>, [u8; 32]), DecoderFn>,
+    }
+
+    impl StarknetEventDecoderRegistry {
+        pub fn new() -> Self {
+            Self {
+                decoders: HashMap::new(),
+            }
+        }
+
+        pub fn register_global<F>(&mut self, selector: [u8; 32], decoder_fn: F)
+        where
+            F: Fn(&RawEvent) -> Result<NightfallEvent, DecodeError> + Send + Sync + 'static,
+        {
+            self.decoders.insert((None, selector), Arc::new(decoder_fn));
+        }
+
+        pub fn register_for_contract<F>(
+            &mut self,
+            contract: ContractId,
+            selector: [u8; 32],
+            decoder_fn: F,
+        ) where
+            F: Fn(&RawEvent) -> Result<NightfallEvent, DecodeError> + Send + Sync + 'static,
+        {
+            self.decoders
+                .insert((Some(contract), selector), Arc::new(decoder_fn));
+        }
+
+        pub fn decode(&self, raw: &RawEvent) -> Result<NightfallEvent, DecodeError> {
+            let selector = raw.keys.first().copied().ok_or(DecodeError::MissingKey0)?;
+
+            if let Some(decoder) = self.decoders.get(&(Some(raw.contract), selector)) {
+                return decoder(raw);
+            }
+
+            if let Some(decoder) = self.decoders.get(&(None, selector)) {
+                return decoder(raw);
+            }
+
+            Err(DecodeError::Unsupported)
+        }
+    }
+
+    pub fn default_registry() -> StarknetEventDecoderRegistry {
+        let mut registry = StarknetEventDecoderRegistry::new();
+        registry.register_global(event_selector("BlockProposed"), decode_block_proposed);
+        registry.register_global(
+            event_selector("DepositEscrowed"),
+            decode_deposit_escrowed,
+        );
+        registry
+    }
+
     pub fn decode_dummy_emitter_event(raw: &RawEvent) -> Result<NightfallEvent, DecodeError> {
-        let key0 = raw.keys.first().copied().ok_or(DecodeError::MissingKey0)?;
+        default_registry().decode(raw)
+    }
+
+    fn decode_block_proposed(raw: &RawEvent) -> Result<NightfallEvent, DecodeError> {
+        validate_data_len(raw)?;
+        let block_number = felt_u64(&felt(raw, 0)?)?;
+        let proposer = Address(felt(raw, 1)?);
+        let transactions_root = felt(raw, 2)?;
+        let timestamp = felt_u64(&felt(raw, 3)?)?;
+        Ok(NightfallEvent::BlockProposed {
+            tx_hash: raw.tx_hash,
+            block_number,
+            proposer,
+            transactions_root,
+            timestamp,
+        })
+    }
+
+    fn decode_deposit_escrowed(raw: &RawEvent) -> Result<NightfallEvent, DecodeError> {
+        validate_data_len(raw)?;
+        let commitment = felt(raw, 0)?;
+        let token_id = felt(raw, 1)?;
+        let value_low = felt(raw, 2)?;
+        let value_high = felt(raw, 3)?;
+        let depositor = Address(felt(raw, 4)?);
+        let value = u256_from_low_high(value_low, value_high);
+
+        Ok(NightfallEvent::DepositEscrowed {
+            tx_hash: raw.tx_hash,
+            commitment,
+            token_id,
+            value,
+            depositor,
+        })
+    }
+
+    fn validate_data_len(raw: &RawEvent) -> Result<(), DecodeError> {
         if raw.data.len() % 32 != 0 {
             return Err(DecodeError::InvalidDataLength);
         }
-
-        if key0 == event_selector("BlockProposed") {
-            let block_number = felt_u64(&felt(raw, 0)?)?;
-            let proposer = Address(felt(raw, 1)?);
-            let transactions_root = felt(raw, 2)?;
-            let timestamp = felt_u64(&felt(raw, 3)?)?;
-            return Ok(NightfallEvent::BlockProposed {
-                tx_hash: raw.tx_hash,
-                block_number,
-                proposer,
-                transactions_root,
-                timestamp,
-            });
-        }
-
-        if key0 == event_selector("DepositEscrowed") {
-            let commitment = felt(raw, 0)?;
-            let token_id = felt(raw, 1)?;
-            let value_low = felt(raw, 2)?;
-            let value_high = felt(raw, 3)?;
-            let depositor = Address(felt(raw, 4)?);
-
-            let value = u256_from_low_high(value_low, value_high);
-
-            return Ok(NightfallEvent::DepositEscrowed {
-                tx_hash: raw.tx_hash,
-                commitment,
-                token_id,
-                value,
-                depositor,
-            });
-        }
-
-        Err(DecodeError::Unsupported)
+        Ok(())
     }
 
     fn felt(raw: &RawEvent, index: usize) -> Result<[u8; 32], DecodeError> {

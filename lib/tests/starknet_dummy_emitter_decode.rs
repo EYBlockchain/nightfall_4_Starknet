@@ -46,7 +46,7 @@ fn decode_block_proposed() {
         data,
     };
 
-    let decoded = lib::starknet_event_decoder::starknet::decode_dummy_emitter_event(&raw).unwrap();
+    let decoded = lib::starknet_event_decoder::starknet::default_registry().decode(&raw).unwrap();
 
     assert_eq!(
         decoded,
@@ -96,7 +96,7 @@ fn decode_deposit_escrowed() {
         data,
     };
 
-    let decoded = lib::starknet_event_decoder::starknet::decode_dummy_emitter_event(&raw).unwrap();
+    let decoded = lib::starknet_event_decoder::starknet::default_registry().decode(&raw).unwrap();
 
     assert_eq!(
         decoded,
