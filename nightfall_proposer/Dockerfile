@@ -13,7 +13,7 @@ COPY . .
 RUN --mount=type=cache,id=cargo-registry-v4,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=cargo-git-v4,target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,id=cargo-target-client-v4,target=/app/target,sharing=private \
-    cargo build --package nightfall_proposer --release --features lib/backend_starknet && \
+    cargo build --package nightfall_proposer --release --features backend_starknet && \
     mv /app/target/release/nightfall_proposer /app/bin/proposer
 FROM debian:bookworm-slim
 WORKDIR /app

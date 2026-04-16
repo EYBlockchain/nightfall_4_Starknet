@@ -11,8 +11,10 @@ use nightfall_bindings::artifacts::Nightfall;
 use nightfall_client::{
     domain::entities::Request,
     driven::queue::process_queue,
-    drivers::{blockchain::event_listener_manager::ensure_running, rest::routes, starknet_event_poller},
+    drivers::{blockchain::event_listener_manager::ensure_running, rest::routes},
 };
+#[cfg(feature = "backend_starknet")]
+use nightfall_client::drivers::starknet_event_poller;
 use tokio::task::JoinError;
 use futures::FutureExt;
 
@@ -47,6 +49,8 @@ async fn main() -> Result<(), JoinError> {
         .expect("Failed to drop Requests collection");
 
     if get_settings().backend_kind == configuration::settings::BackendKind::Starknet {
+        #[cfg(feature = "backend_starknet")]
+        {
         info!("backend_kind=starknet: starting Starknet event poller");
         tokio::spawn(async {
             let res = std::panic::AssertUnwindSafe(starknet_event_poller::start_starknet_event_poller())
@@ -57,6 +61,11 @@ async fn main() -> Result<(), JoinError> {
                 Err(_) => log::error!("starknet poller task panicked"),
             }
         });
+        }
+        #[cfg(not(feature = "backend_starknet"))]
+        {
+            panic!("backend_kind=starknet requires the `backend_starknet` feature");
+        }
     } else {
         ensure_running::<N>().await;
     }

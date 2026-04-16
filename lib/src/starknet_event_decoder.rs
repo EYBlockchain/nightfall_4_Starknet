@@ -81,6 +81,13 @@ pub mod starknet {
         registry
     }
 
+    pub fn dummy_emitter_selectors() -> Vec<[u8; 32]> {
+        vec![
+            event_selector("BlockProposed"),
+            event_selector("DepositEscrowed"),
+        ]
+    }
+
     pub fn decode_dummy_emitter_event(raw: &RawEvent) -> Result<NightfallEvent, DecodeError> {
         default_registry().decode(raw)
     }

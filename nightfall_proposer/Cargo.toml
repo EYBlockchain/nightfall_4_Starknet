@@ -59,6 +59,7 @@ name = "bench_deposit"
 harness = false
 
 [features]
+backend_starknet = ["lib/backend_starknet"]
 parallel = ["ark-std/parallel", "ark-ff/parallel", "ark-poly/parallel", "ark-ec/parallel"]
 
 

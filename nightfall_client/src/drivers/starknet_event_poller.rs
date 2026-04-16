@@ -6,7 +6,7 @@ use lib::chain_client::get_chain_client;
 use lib::starknet_event_decoder;
 use crate::services::process_starknet_events;
 use log::info;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, atomic::{AtomicU64, Ordering}};
 use std::io::Write;
 use tokio::time::{sleep, Duration};
 
@@ -57,7 +57,11 @@ pub async fn start_starknet_event_poller() {
         },
     };
 
-    let filter = EventFilter { contract, keys: vec![] };
+    let registry = Arc::new(starknet_event_decoder::starknet::default_registry());
+    let filter = EventFilter {
+        contract,
+        keys: starknet_event_decoder::starknet::dummy_emitter_selectors(),
+    };
 
     static TICKS: AtomicU64 = AtomicU64::new(0);
 
@@ -67,7 +71,9 @@ pub async fn start_starknet_event_poller() {
         cfg,
         settings.nightfall_client.db_url.clone(),
         "nightfall_client_starknet_poller",
-        |events| async move {
+        move |events| {
+        let registry = Arc::clone(&registry);
+        async move {
         let tick = TICKS.fetch_add(1, Ordering::Relaxed) + 1;
         info!("starknet poller tick #{tick}: received {} events", events.len());
         eprintln!("starknet poller tick #{tick}: received {} events", events.len());
@@ -83,7 +89,7 @@ pub async fn start_starknet_event_poller() {
                 hex::encode(ev.tx_hash.0)
             );
 
-            match starknet_event_decoder::starknet::decode_dummy_emitter_event(ev) {
+            match registry.decode(ev) {
                 Ok(decoded) => {
                     info!("starknet decoded event[{idx}]: {decoded:?}");
                     process_starknet_events::process_starknet_event(decoded)
@@ -94,7 +100,7 @@ pub async fn start_starknet_event_poller() {
             }
         }
         Ok(())
-    },
+    }},
     )
     .await;
 

@@ -15,7 +15,7 @@ COPY configuration/bin/ configuration/bin/
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/app/target \
     --mount=type=cache,target=/usr/local/cargo/git \
-    cargo build --package nightfall_client --release --features lib/backend_starknet && \
+    cargo build --package nightfall_client --release --features backend_starknet && \
     mv /app/target/release/nightfall_client /app/bin/client
 
 FROM debian:bookworm-slim
