@@ -179,10 +179,13 @@ impl StarknetChainClient {
         TParams: Serialize,
         TResult: for<'de> Deserialize<'de>,
     {
+        let params_value = serde_json::to_value(&params)
+            .map_err(|e| ChainClientError::Rpc(e.to_string()))?;
+        let wrapped_params = wrap_rpc_params(params_value);
         let request = JsonRpcRequest {
             jsonrpc: "2.0",
             method,
-            params: vec![params],
+            params: wrapped_params,
             id: 1u64,
         };
 
@@ -216,11 +219,19 @@ impl StarknetChainClient {
 }
 
 #[derive(Debug, Serialize)]
-struct JsonRpcRequest<TParams> {
+struct JsonRpcRequest {
     jsonrpc: &'static str,
     method: &'static str,
-    params: TParams,
+    params: Value,
     id: u64,
+}
+
+pub(crate) fn wrap_rpc_params(value: Value) -> Value {
+    match &value {
+        Value::Null => Value::Array(vec![]),
+        Value::Array(a) if a.is_empty() => Value::Array(vec![]),
+        _ => Value::Array(vec![value]),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -246,14 +257,14 @@ impl ChainClient for StarknetChainClient {
     }
 
     async fn chain_id(&self) -> Result<ChainId, ChainClientError> {
-        let chain_id_hex: String = self.rpc_call("starknet_chainId", Vec::<u8>::new()).await?;
+        let chain_id_hex: String = self.rpc_call("starknet_chainId", Value::Null).await?;
         ChainId::from_hex_str(&chain_id_hex)
             .map_err(|e| ChainClientError::Rpc(format!("invalid chain id: {e}")))
     }
 
     async fn block_number(&self) -> Result<BlockNumber, ChainClientError> {
         let n: u64 = self
-            .rpc_call("starknet_blockNumber", Vec::<u8>::new())
+            .rpc_call("starknet_blockNumber", Value::Null)
             .await?;
         Ok(BlockNumber(n))
     }
