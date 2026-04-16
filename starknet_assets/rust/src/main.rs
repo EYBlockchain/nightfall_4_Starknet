@@ -122,6 +122,13 @@ impl std::fmt::Display for RpcErrorPayload {
     }
 }
 
+impl RpcErrorPayload {
+    fn is_already_declared(&self) -> bool {
+        let message = self.to_string().to_ascii_lowercase();
+        message.contains("already") && message.contains("declared")
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct RpcResponse {
     #[serde(default)]
@@ -321,7 +328,13 @@ async fn deploy(cli: &Cli, rpc: &RpcClient, args: &DeployArgs) -> Result<(), App
             .await?;
             Some(declare_result.transaction_hash)
         }
-        Err(RpcCallError::Rpc(error)) if error.code == 51 => None,
+        Err(RpcCallError::Rpc(error)) if error.is_already_declared() => {
+            println!(
+                "declare skipped: class already declared, using computed class_hash={}",
+                felt_hex(class_hash)
+            );
+            None
+        }
         Err(error) => return Err(error.into()),
     };
 
