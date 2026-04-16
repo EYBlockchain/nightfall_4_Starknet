@@ -31,19 +31,9 @@ const DEFAULT_CASM_ARTIFACT: &str = "../cairo1_dummy_emitter/target/dev/cairo1_d
 const DEFAULT_ADDRESS_FILE: &str = "../artifacts/dummy_emitter_address.txt";
 const DEFAULT_ACCOUNT_ADDRESS: &str = "0x064b48806902a367c8598f4f95c305e8c1a1acba5f082d294a43793113115691";
 const DEFAULT_PRIVATE_KEY: &str = "0x0000000000000000000000000000000071d7bb07b9a64f6f78ac4c816aff4da9";
-const DECLARE_L1_GAS: u64 = 0;
-const DECLARE_L1_GAS_PRICE: u128 = 1_000_000_000_000_000;
-const DECLARE_L2_GAS: u64 = 100_000_000;
-const DECLARE_L2_GAS_PRICE: u128 = 10_000_000_000;
-const DECLARE_L1_DATA_GAS: u64 = 1_000;
-const DECLARE_L1_DATA_GAS_PRICE: u128 = 100_000_000_000_000;
+const DEFAULT_MAX_AMOUNT: u64 = 0x20000000;
+const DEFAULT_MAX_PRICE_PER_UNIT: u128 = 0x200;
 const DECLARE_TIP: u64 = 0;
-const DEPLOY_L1_GAS: u64 = 0;
-const DEPLOY_L1_GAS_PRICE: u128 = 1_000_000_000_000_000;
-const DEPLOY_L2_GAS: u64 = 2_000_000;
-const DEPLOY_L2_GAS_PRICE: u128 = 10_000_000_000;
-const DEPLOY_L1_DATA_GAS: u64 = 1_000;
-const DEPLOY_L1_DATA_GAS_PRICE: u128 = 100_000_000_000_000;
 const DEPLOY_TIP: u64 = 0;
 const MAX_RECEIPT_POLL_ATTEMPTS: usize = 60;
 const RECEIPT_POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -57,8 +47,27 @@ struct Cli {
     account_address: String,
     #[arg(long, global = true, env = "NF4_SIGNING_KEY", default_value = DEFAULT_PRIVATE_KEY)]
     private_key: String,
+    #[arg(long, global = true, default_value_t = DEFAULT_MAX_AMOUNT, value_parser = parse_u64_cli_value)]
+    max_amount: u64,
+    #[arg(long, global = true, default_value_t = DEFAULT_MAX_PRICE_PER_UNIT, value_parser = parse_u128_cli_value)]
+    max_price_per_unit: u128,
     #[command(subcommand)]
     command: Command,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct ResourceBoundsConfig {
+    max_amount: u64,
+    max_price_per_unit: u128,
+}
+
+impl Cli {
+    fn resource_bounds(&self) -> ResourceBoundsConfig {
+        ResourceBoundsConfig {
+            max_amount: self.max_amount,
+            max_price_per_unit: self.max_price_per_unit,
+        }
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -261,6 +270,7 @@ async fn ping(rpc: &RpcClient) -> Result<(), RpcCallError> {
 }
 
 async fn deploy(cli: &Cli, rpc: &RpcClient, args: &DeployArgs) -> Result<(), AppError> {
+    let resource_bounds = cli.resource_bounds();
     let sierra_class = read_json_file::<SierraClass>(&args.sierra_artifact)?;
     let compiled_class = read_json_file::<CompiledClass>(&args.casm_artifact)?;
     let flattened_class = sierra_class
@@ -294,12 +304,12 @@ async fn deploy(cli: &Cli, rpc: &RpcClient, args: &DeployArgs) -> Result<(), App
     let prepared_declare = account
         .declare_v3(Arc::new(flattened_class), compiled_class_hash)
         .nonce(declare_nonce)
-        .l1_gas(DECLARE_L1_GAS)
-        .l1_gas_price(DECLARE_L1_GAS_PRICE)
-        .l2_gas(DECLARE_L2_GAS)
-        .l2_gas_price(DECLARE_L2_GAS_PRICE)
-        .l1_data_gas(DECLARE_L1_DATA_GAS)
-        .l1_data_gas_price(DECLARE_L1_DATA_GAS_PRICE)
+        .l1_gas(resource_bounds.max_amount)
+        .l1_gas_price(resource_bounds.max_price_per_unit)
+        .l2_gas(resource_bounds.max_amount)
+        .l2_gas_price(resource_bounds.max_price_per_unit)
+        .l1_data_gas(resource_bounds.max_amount)
+        .l1_data_gas_price(resource_bounds.max_price_per_unit)
         .tip(DECLARE_TIP)
         .prepared()
         .map_err(|error| AppError::Artifact(error.to_string()))?;
@@ -343,12 +353,12 @@ async fn deploy(cli: &Cli, rpc: &RpcClient, args: &DeployArgs) -> Result<(), App
     let deployment = factory
         .deploy_v3(Vec::new(), salt, false)
         .nonce(fetch_account_nonce(&receipt_provider, account_address).await?)
-        .l1_gas(DEPLOY_L1_GAS)
-        .l1_gas_price(DEPLOY_L1_GAS_PRICE)
-        .l2_gas(DEPLOY_L2_GAS)
-        .l2_gas_price(DEPLOY_L2_GAS_PRICE)
-        .l1_data_gas(DEPLOY_L1_DATA_GAS)
-        .l1_data_gas_price(DEPLOY_L1_DATA_GAS_PRICE)
+        .l1_gas(resource_bounds.max_amount)
+        .l1_gas_price(resource_bounds.max_price_per_unit)
+        .l2_gas(resource_bounds.max_amount)
+        .l2_gas_price(resource_bounds.max_price_per_unit)
+        .l1_data_gas(resource_bounds.max_amount)
+        .l1_data_gas_price(resource_bounds.max_price_per_unit)
         .tip(DEPLOY_TIP);
     let deployed_address = deployment.deployed_address();
     let prepared_deploy = ExecutionV3::from(&deployment)
@@ -388,6 +398,11 @@ async fn deploy(cli: &Cli, rpc: &RpcClient, args: &DeployArgs) -> Result<(), App
     println!("class_hash={}", felt_hex(class_hash));
     println!("compiled_class_hash={}", felt_hex(compiled_class_hash));
     println!("casm_artifact_hash={}", felt_hex(casm_artifact_hash));
+    println!("resource_bounds_max_amount={}", resource_bounds.max_amount);
+    println!(
+        "resource_bounds_max_price_per_unit={}",
+        resource_bounds.max_price_per_unit
+    );
     match declare_tx_hash {
         Some(transaction_hash) => println!("declare_tx_hash={}", felt_hex(transaction_hash)),
         None => println!("declare_tx_hash=already_declared"),
@@ -506,6 +521,36 @@ fn parse_felt(name: &'static str, value: &str) -> Result<Felt, AppError> {
             name,
             value: value.to_owned(),
         })
+    }
+}
+
+fn parse_u64_cli_value(value: &str) -> Result<u64, String> {
+    let trimmed = value.trim();
+    if let Some(hex) = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+    {
+        u64::from_str_radix(hex, 16)
+            .map_err(|_| format!("invalid u64 value `{trimmed}`; expected decimal or 0x-prefixed hex"))
+    } else {
+        trimmed
+            .parse::<u64>()
+            .map_err(|_| format!("invalid u64 value `{trimmed}`; expected decimal or 0x-prefixed hex"))
+    }
+}
+
+fn parse_u128_cli_value(value: &str) -> Result<u128, String> {
+    let trimmed = value.trim();
+    if let Some(hex) = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+    {
+        u128::from_str_radix(hex, 16)
+            .map_err(|_| format!("invalid u128 value `{trimmed}`; expected decimal or 0x-prefixed hex"))
+    } else {
+        trimmed
+            .parse::<u128>()
+            .map_err(|_| format!("invalid u128 value `{trimmed}`; expected decimal or 0x-prefixed hex"))
     }
 }
 
