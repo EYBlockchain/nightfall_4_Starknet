@@ -1,5 +1,5 @@
 use super::{ChainClient, ChainClientError, SignedTransaction, TxReceipt};
-use super::types::{Address, BlockNumber, ChainId, ContractId, EventFilter, RawEvent, TxHash};
+use super::types::{Address, BlockHash, BlockNumber, ChainId, ContractId, EventFilter, RawEvent, TxHash};
 use async_trait::async_trait;
 use hex;
 use reqwest::Client;
@@ -44,6 +44,7 @@ struct StarknetEmittedEvent {
     from_address: String,
     keys: Vec<String>,
     data: Vec<String>,
+    block_hash: String,
     #[serde(default)]
     block_number: Option<u64>,
     #[serde(default)]
@@ -353,6 +354,8 @@ impl ChainClient for StarknetChainClient {
                     .map(BlockNumber)
                     .unwrap_or(from_block);
 
+                let block_hash = BlockHash(hex_to_32_bytes(&e.block_hash)?);
+
                 let tx_hash = if let Some(h) = e.transaction_hash {
                     TxHash(hex_to_32_bytes(&h)?)
                 } else {
@@ -371,6 +374,7 @@ impl ChainClient for StarknetChainClient {
 
                 out.push(RawEvent {
                     block_number,
+                    block_hash,
                     tx_hash,
                     contract,
                     keys,

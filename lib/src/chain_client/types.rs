@@ -47,6 +47,9 @@ pub struct BlockNumber(pub u64);
 pub struct TxHash(pub [u8; 32]);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct BlockHash(pub [u8; 32]);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ContractId(pub Address);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -85,6 +88,7 @@ impl Address {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RawEvent {
     pub block_number: BlockNumber,
+    pub block_hash: BlockHash,
     pub tx_hash: TxHash,
     pub contract: ContractId,
     pub keys: Vec<[u8; 32]>,

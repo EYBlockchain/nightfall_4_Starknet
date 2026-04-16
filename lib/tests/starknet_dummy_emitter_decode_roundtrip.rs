@@ -29,6 +29,7 @@ fn decode_block_proposed_from_raw_event() {
 
     let raw = RawEvent {
         block_number: lib::chain_client::types::BlockNumber(0),
+        block_hash: lib::chain_client::types::BlockHash([1u8; 32]),
         tx_hash: lib::chain_client::types::TxHash([0u8; 32]),
         contract: lib::chain_client::types::ContractId(lib::chain_client::types::Address([0u8; 32])),
         keys: vec![selector("BlockProposed")],
@@ -58,6 +59,7 @@ fn decode_deposit_escrowed_from_raw_event() {
 
     let raw = RawEvent {
         block_number: lib::chain_client::types::BlockNumber(0),
+        block_hash: lib::chain_client::types::BlockHash([2u8; 32]),
         tx_hash: lib::chain_client::types::TxHash([0u8; 32]),
         contract: lib::chain_client::types::ContractId(lib::chain_client::types::Address([0u8; 32])),
         keys: vec![selector("DepositEscrowed")],

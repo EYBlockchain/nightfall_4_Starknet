@@ -2,7 +2,7 @@ use crate::chain_client::{
     ChainClient, ChainClientError, SignedTransaction, TxReceipt,
 };
 use crate::chain_client::types::{
-    Address, BlockNumber, ChainId, ContractId, EventFilter, RawEvent, TxHash,
+    Address, BlockHash, BlockNumber, ChainId, ContractId, EventFilter, RawEvent, TxHash,
 };
 use async_trait::async_trait;
 
@@ -111,6 +111,11 @@ impl ChainClient for EvmChainClient {
                 .map(|h| TxHash(h.into()))
                 .unwrap_or(TxHash([0u8; 32]));
 
+            let block_hash = log
+                .block_hash
+                .map(|h| BlockHash(h.0))
+                .ok_or_else(|| ChainClientError::Rpc("missing block_hash in EVM log".to_string()))?;
+
             let contract = ContractId(Address::from(log.address()));
 
             // topics: Vec<B256>
@@ -120,6 +125,7 @@ impl ChainClient for EvmChainClient {
 
             out.push(RawEvent {
                 block_number,
+                block_hash,
                 tx_hash,
                 contract,
                 keys,

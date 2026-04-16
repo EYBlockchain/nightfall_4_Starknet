@@ -1,6 +1,6 @@
 #![cfg(feature = "backend_starknet")]
 
-use lib::chain_client::types::{BlockNumber, ContractId, RawEvent, TxHash};
+use lib::chain_client::types::{BlockHash, BlockNumber, ContractId, RawEvent, TxHash};
 use lib::chain_client::types::{Address, U256};
 
 fn selector(name: &str) -> [u8; 32] {
@@ -39,6 +39,7 @@ fn decode_block_proposed() {
 
     let raw = RawEvent {
         block_number: BlockNumber(7),
+        block_hash: BlockHash([1u8; 32]),
         tx_hash: TxHash([0u8; 32]),
         contract: ContractId(Address([0u8; 32])),
         keys: vec![selector("BlockProposed")],
@@ -87,6 +88,7 @@ fn decode_deposit_escrowed() {
 
     let raw = RawEvent {
         block_number: BlockNumber(1),
+        block_hash: BlockHash([2u8; 32]),
         tx_hash: TxHash([0u8; 32]),
         contract: ContractId(Address([0u8; 32])),
         keys: vec![selector("DepositEscrowed")],
