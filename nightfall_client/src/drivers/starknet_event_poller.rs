@@ -1,5 +1,6 @@
 use configuration::settings::get_settings;
 use lib::chain_client::polling::{poll_events_forever, PollConfig};
+use lib::chain_client::ChainClientError;
 use lib::chain_client::types::{Address, BlockNumber, ContractId, EventFilter};
 use lib::chain_client::get_chain_client;
 use lib::starknet_event_decoder;
@@ -38,7 +39,9 @@ pub async fn start_starknet_event_poller() {
     let cfg = PollConfig {
         poll_interval: std::time::Duration::from_secs(2),
         chunk_size_blocks: 1000,
-        start_block: BlockNumber(0),
+        genesis_block: BlockNumber(settings.genesis_block as u64),
+        finality_lag_blocks: settings.starknet_finality_lag_blocks,
+        rewind_blocks: settings.starknet_rewind_blocks,
     };
 
     let contract = match settings.starknet_events_contract_address.trim() {
@@ -58,7 +61,13 @@ pub async fn start_starknet_event_poller() {
 
     static TICKS: AtomicU64 = AtomicU64::new(0);
 
-    let _ = poll_events_forever(client, filter, cfg, |events| {
+    let _ = poll_events_forever(
+        client,
+        filter,
+        cfg,
+        settings.nightfall_client.db_url.clone(),
+        "nightfall_client_starknet_poller",
+        |events| async move {
         let tick = TICKS.fetch_add(1, Ordering::Relaxed) + 1;
         info!("starknet poller tick #{tick}: received {} events", events.len());
         eprintln!("starknet poller tick #{tick}: received {} events", events.len());
@@ -77,17 +86,16 @@ pub async fn start_starknet_event_poller() {
             match starknet_event_decoder::starknet::decode_dummy_emitter_event(ev) {
                 Ok(decoded) => {
                     info!("starknet decoded event[{idx}]: {decoded:?}");
-                    // For now this just logs; later it can drive real domain processing.
-                    let _ = tokio::spawn(async move {
-                        if let Err(e) = process_starknet_events::process_starknet_event(decoded).await {
-                            log::warn!("process_starknet_event failed: {e}");
-                        }
-                    });
+                    process_starknet_events::process_starknet_event(decoded)
+                        .await
+                        .map_err(|e| ChainClientError::Rpc(format!("process_starknet_event failed: {e}")))?;
                 }
                 Err(e) => info!("starknet undecoded event[{idx}]: {e}"),
             }
         }
-    })
+        Ok(())
+    },
+    )
     .await;
 
     log::warn!("starknet poller: poll loop returned unexpectedly");

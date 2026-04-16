@@ -165,6 +165,10 @@ pub struct Settings {
     #[serde(default)]
     pub genesis_block: usize,
     #[serde(default)]
+    pub starknet_finality_lag_blocks: u64,
+    #[serde(default)]
+    pub starknet_rewind_blocks: u64,
+    #[serde(default)]
     pub certificates: CertificateConfig,
     #[serde(default)]
     pub configuration_url: String,
